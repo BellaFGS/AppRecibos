@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -139,6 +141,15 @@
             android:orientation="vertical"
             android:layout_marginEnd="16dp">
 
+            <ImageView
+                android:id="@+id/imgAssinaturaResponsavel"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:src="@drawable/assinatura"
+                android:adjustViewBounds="true"
+                android:scaleType="fitCenter"
+                android:layout_marginBottom="8dp" />
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -158,38 +169,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/assinatura_responsavel"
-                android:textSize="12sp"
-                android:textAlignment="center"
-                android:textColor="@color/black" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="16dp">
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/black"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:id="@+id/tvNomeClienteAssinatura"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:textAlignment="center"
-                android:textColor="@color/black" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/assinatura_cliente"
                 android:textSize="12sp"
                 android:textAlignment="center"
                 android:textColor="@color/black" />

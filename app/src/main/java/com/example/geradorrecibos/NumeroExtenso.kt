@@ -1,5 +1,7 @@
 package com.example.geradorrecibos
 
+import java.util.Locale
+
 object NumeroExtenso {
     
     private val unidades = arrayOf(
@@ -61,38 +63,38 @@ object NumeroExtenso {
             "$texto $plural"
         }
     }
-    
+
     fun numeroParaExtenso(valor: Double): String {
         if (valor == 0.0) return "zero reais"
-        
-        val valorFormatado = String.format("%.2f", valor)
+
+        // Garante que sempre usa ponto como separador decimal
+        val valorFormatado = String.format(Locale.US, "%.2f", valor)
         val partes = valorFormatado.split(".")
         val reais = partes[0].toInt()
         val centavos = partes[1].toInt()
-        
+
         var resultado = ""
-        
+
         if (reais == 0) {
             resultado = "zero reais"
         } else if (reais == 1) {
             resultado = "um real"
         } else {
-            // Processar milhões
-            val milhoes = reais / 1000000
-            val milhares = (reais % 1000000) / 1000
+            val milhoes = reais / 1_000_000
+            val milhares = (reais % 1_000_000) / 1000
             val unidadesReais = reais % 1000
-            
+
             var parteReais = ""
-            
+
             if (milhoes > 0) {
                 parteReais += converterGrupo(milhoes, "milhão", "milhões")
             }
-            
+
             if (milhares > 0) {
                 if (parteReais.isNotEmpty()) parteReais += " "
                 parteReais += converterGrupo(milhares, "mil", "mil")
             }
-            
+
             if (unidadesReais > 0) {
                 if (parteReais.isNotEmpty()) {
                     if (milhoes > 0 || milhares > 0) {
@@ -101,16 +103,17 @@ object NumeroExtenso {
                 }
                 parteReais += converterCentena(unidadesReais)
             }
-            
+
             resultado = "$parteReais ${if (reais == 1) "real" else "reais"}"
         }
-        
+
         if (centavos > 0) {
             val textoCentavos = converterCentena(centavos)
             resultado += " e $textoCentavos ${if (centavos == 1) "centavo" else "centavos"}"
         }
-        
+
         return resultado
     }
+
 }
 

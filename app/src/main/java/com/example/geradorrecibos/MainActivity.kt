@@ -100,7 +100,13 @@ class MainActivity : AppCompatActivity() {
         val valorText = binding.etValor.text.toString()
         if (valorText.isNotEmpty()) {
             try {
-                val valor = valorText.toDouble()
+                val valorStr = binding.etValor.text.toString()
+                val valor = valorStr.toDoubleOrNull()
+                if (valor == null) {
+                    Toast.makeText(this, "Informe um valor válido", Toast.LENGTH_SHORT).show()
+                    return
+                }
+
                 val valorExtenso = NumeroExtenso.numeroParaExtenso(valor)
                 binding.tvValorExtenso.text = "Por extenso: $valorExtenso"
                 binding.tvValorExtenso.visibility = View.VISIBLE
@@ -111,29 +117,37 @@ class MainActivity : AppCompatActivity() {
             binding.tvValorExtenso.visibility = View.GONE
         }
     }
-    
+
     private fun validateFields(): Boolean {
         val nomeCliente = binding.etNomeCliente.text.toString().trim()
         val documentoCliente = binding.etDocumentoCliente.text.toString().trim()
-        val valor = binding.etValor.text.toString().trim()
+        val valorStr = binding.etValor.text.toString().trim()
         val servicoProposto = binding.etServicoProposto.text.toString().trim()
-        
-        if (nomeCliente.isEmpty() || documentoCliente.isEmpty() || 
-            valor.isEmpty() || servicoProposto.isEmpty()) {
+
+        if (nomeCliente.isEmpty() || documentoCliente.isEmpty() ||
+            valorStr.isEmpty() || servicoProposto.isEmpty()
+        ) {
             Toast.makeText(this, getString(R.string.campos_obrigatorios), Toast.LENGTH_SHORT).show()
             return false
         }
-        
-        try {
-            valor.toDouble()
-        } catch (e: NumberFormatException) {
+
+        val valor = valorStr.toDoubleOrNull()
+        if (valor == null) {
             Toast.makeText(this, "Valor inválido", Toast.LENGTH_SHORT).show()
             return false
         }
-        
+
+        // 🚨 Validação de valor máximo
+        val valorMaximo = 999_999_999.99
+        if (valor > valorMaximo) {
+            Toast.makeText(this, "Valor excede o limite permitido (R$ 999.999.999,99)", Toast.LENGTH_LONG).show()
+            return false
+        }
+
         return true
     }
-    
+
+
     private fun showReciboDialog() {
         val dialogBinding = LayoutReciboBinding.inflate(LayoutInflater.from(this))
         
@@ -153,33 +167,64 @@ class MainActivity : AppCompatActivity() {
         
         dialog.show()
     }
-    
+
     private fun fillReciboData(dialogBinding: LayoutReciboBinding) {
-        val nomeEmpresa = binding.etNomeEmpresa.text.toString()
-        val nomeResponsavel = binding.etNomeResponsavel.text.toString()
-        val documentoResponsavel = binding.etDocumentoResponsavel.text.toString()
-        val nomeCliente = binding.etNomeCliente.text.toString()
-        val documentoCliente = binding.etDocumentoCliente.text.toString()
-        val valor = binding.etValor.text.toString().toDouble()
-        val servicoProposto = binding.etServicoProposto.text.toString()
-        val dataPagamento = binding.etDataPagamento.text.toString()
-        
-        dialogBinding.apply {
-            tvEmpresaRecibo.text = "Empresa: $nomeEmpresa"
-            tvResponsavelRecibo.text = "Responsável: $nomeResponsavel"
-            tvDocumentoResponsavelRecibo.text = "Documento: $documentoResponsavel"
-            tvNomeClienteRecibo.text = "Nome: $nomeCliente"
-            tvDocumentoClienteRecibo.text = "Documento: $documentoCliente"
-            tvServicoRecibo.text = "Serviço: $servicoProposto"
-            tvValorRecibo.text = "Valor: ${currencyFormat.format(valor)}"
-            tvValorExtensoRecibo.text = "Valor por extenso: ${NumeroExtenso.numeroParaExtenso(valor)}"
-            tvDataPagamentoRecibo.text = "Data do Pagamento: $dataPagamento"
-            tvNomeResponsavelAssinatura.text = nomeResponsavel
-            tvNomeClienteAssinatura.text = nomeCliente
-            tvDataGeracao.text = "Recibo gerado em ${SimpleDateFormat("dd/MM/yyyy 'às' HH:mm", Locale.getDefault()).format(Date())}"
+        try {
+            val nomeEmpresa = binding.etNomeEmpresa.text.toString()
+            val nomeResponsavel = binding.etNomeResponsavel.text.toString()
+            val documentoResponsavel = binding.etDocumentoResponsavel.text.toString()
+            val nomeCliente = binding.etNomeCliente.text.toString()
+            val documentoCliente = binding.etDocumentoCliente.text.toString()
+            val valorStr = binding.etValor.text.toString().trim()
+            val servicoProposto = binding.etServicoProposto.text.toString()
+            val dataPagamento = binding.etDataPagamento.text.toString()
+            val docResponsavelMascara = aplicarMascaraDocumento(documentoResponsavel)   //Mascara de documento do responsável
+            val docClienteMascara = aplicarMascaraDocumento(documentoCliente)           //Mascara de documento do responsável
+            val currencyFormatBR = NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
+            val dataPagamentoFormatada = aplicarMascaraData(dataPagamento)
+
+            val valor = valorStr.toDoubleOrNull()
+            if (valor == null) {
+                Toast.makeText(this, "Informe um valor válido", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            dialogBinding.apply {
+                //EMPRESA
+                tvEmpresaRecibo.text = "Empresa: ${nomeEmpresa.caixaAlta()}"
+                tvResponsavelRecibo.text = "Responsável: ${nomeResponsavel.caixaAlta()}"
+                tvDocumentoResponsavelRecibo.text = "Documento: ${docResponsavelMascara}"
+                tvNomeClienteRecibo.text = "Cliente: ${nomeCliente.caixaAlta()}"
+                tvDocumentoClienteRecibo.text = "CPF/RG/CNPJ: ${docClienteMascara}"
+                tvServicoRecibo.text = "Serviço: ${servicoProposto.caixaAlta()}"
+
+                tvValorRecibo.text = "Valor: ${currencyFormatBR.format(valor)}"
+
+
+                // Protege contra possíveis erros do NumeroExtenso
+                val valorExtenso = try {
+                    NumeroExtenso.numeroParaExtenso(valor)
+                } catch (e: Exception) {
+                    "ERRO AO CONVERTER VALOR POR EXTENSO!"
+                }
+                tvValorExtensoRecibo.text = "Valor por extenso: ${valorExtenso.caixaAlta()}"
+
+                tvDataPagamentoRecibo.text = "Data do pagamento: $dataPagamentoFormatada"
+
+                tvNomeResponsavelAssinatura.text = nomeResponsavel
+
+
+                tvDataGeracao.text = "Recibo gerado em ${
+                    SimpleDateFormat("dd/MM/yyyy 'às' HH:mm", Locale.getDefault()).format(Date())
+                }"
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Erro ao gerar recibo!", Toast.LENGTH_SHORT).show()
         }
     }
-    
+
+
     private fun checkPermissionAndSavePDF(view: View) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             savePDF(view)
@@ -279,13 +324,56 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.erro_salvar), Toast.LENGTH_SHORT).show()
         }
     }
-    
+
     private fun createBitmapFromView(view: View): Bitmap {
-        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        // Força a medir o layout inteiro
+        view.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+
+        val bitmap = Bitmap.createBitmap(view.measuredWidth, view.measuredHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
         view.draw(canvas)
         return bitmap
     }
+
+
+    private fun String.caixaAlta(): String = this.uppercase(Locale("pt", "BR"))
+
+    private fun aplicarMascaraDocumento(doc: String): String {
+        val apenasNumeros = doc.filter { it.isDigit() }
+
+        return when (apenasNumeros.length) {
+            11 -> { // CPF
+                apenasNumeros.replace(Regex("(\\d{3})(\\d{3})(\\d{3})(\\d{2})"),
+                    "$1.$2.$3-$4")
+            }
+            14 -> { // CNPJ
+                apenasNumeros.replace(Regex("(\\d{2})(\\d{3})(\\d{3})(\\d{4})(\\d{2})"),
+                    "$1.$2.$3/$4-$5")
+            }
+            9 -> { // RG (formato comum)
+                apenasNumeros.replace(Regex("(\\d{2})(\\d{3})(\\d{3})(\\d{1})"),
+                    "$1.$2.$3-$4")
+            }
+            else -> apenasNumeros // sem máscara se não encaixar
+        }
+    }
+
+    private fun aplicarMascaraData(data: String): String {
+        val apenasNumeros = data.filter { it.isDigit() }
+        return if (apenasNumeros.length == 8) {
+            // Exemplo: 01022025 -> 01/02/2025
+            apenasNumeros.replace(Regex("(\\d{2})(\\d{2})(\\d{4})"), "$1/$2/$3")
+        } else {
+            data // retorna como está se não for 8 dígitos
+        }
+    }
+
+
+
 }
 

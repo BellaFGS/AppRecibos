@@ -13,17 +13,6 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Cabeçalho -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textAlignment="center"
-            android:layout_marginBottom="24dp"
-            android:textColor="@color/text_primary" />
-
         <!-- Dados da Empresa -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -57,7 +46,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/nome_empresa"
-                        android:text="Sua Empresa Ltda" />
+                        android:text="Bellar Envelopamentos" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -70,7 +59,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/nome_responsavel"
-                        android:text="João Silva" />
+                        android:text="Leandro Ferreira Gomes da Silva" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -83,7 +72,9 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/documento_responsavel"
-                        android:text="123.456.789-00" />
+                        android:text="27173028833"
+                        android:inputType="number"
+                        />
                 </com.google.android.material.textfield.TextInputLayout>
 
             </LinearLayout>
@@ -133,7 +124,8 @@
                         android:id="@+id/etDocumentoCliente"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/documento_cliente" />
+                        android:hint="@string/documento_cliente"
+                        android:inputType="number"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <LinearLayout
@@ -169,7 +161,7 @@
                             android:layout_height="wrap_content"
                             android:hint="@string/data_pagamento"
                             android:inputType="date"
-                            android:focusable="false"
+                            android:focusable="true"
                             android:clickable="true" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -198,7 +190,7 @@
                     android:textColor="@color/text_secondary"
                     android:visibility="gone" />
 
-            </LinearLayout>
+           </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- Botão Gerar Recibo -->
