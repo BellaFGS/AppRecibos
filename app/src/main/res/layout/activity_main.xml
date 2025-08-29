@@ -46,7 +46,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/nome_empresa"
-                        android:text="Bellar Envelopamentos" />
+                        android:text="" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -59,7 +59,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/nome_responsavel"
-                        android:text="Leandro Ferreira Gomes da Silva" />
+                        android:text="" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -72,7 +72,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="@string/documento_responsavel"
-                        android:text="27173028833"
+                        android:text=""
                         android:inputType="number"
                         />
                 </com.google.android.material.textfield.TextInputLayout>
