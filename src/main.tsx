@@ -116,13 +116,6 @@ function longDate(value: string) {
 function initials(name: string) { return name ? name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase() : 'RF'; }
 function compatible(a: Unit, b: Unit) { return unitsAreCompatible(a, b); }
 function proportionalCost(item: CostItem) { return calculateProportionalCost(item); }
-function periodStart(period: 'week' | 'month' | 'year') {
-  const date = new Date();
-  if (period === 'week') date.setDate(date.getDate() - 6);
-  if (period === 'month') date.setDate(1);
-  if (period === 'year') date.setMonth(0, 1);
-  return date.toISOString().slice(0, 10);
-}
 
 
 type IconName = 'home' | 'calculator' | 'calendar' | 'receipt' | 'history' | 'user' | 'plus' | 'arrow' | 'trend' | 'wallet' | 'clock' | 'check' | 'trash' | 'edit' | 'download' | 'share' | 'search' | 'info' | 'dollar' | 'spark' | 'menu' | 'close' | 'chevron' | 'upload' | 'signature' | 'target' | 'bell' | 'package' | 'copy' | 'filter' | 'back' | 'more' | 'lock';
@@ -325,15 +318,500 @@ function PageTitle({ eyebrow, title, description, action, onAction, icon = 'spar
   return <div className="page-title"><div><div className="eyebrow"><span className="eyebrow-dot"><Icon name={icon} size={13} /></span>{eyebrow || 'PJ OWL'}</div><h1>{title}</h1>{description && <p>{description}</p>}</div>{action && <Button icon="plus" onClick={onAction}>{action}</Button>}</div>;
 }
 
-function Dashboard({ profile, receipts, expenses, appointments, navigate }: { profile: BusinessProfile; receipts: Receipt[]; expenses: Expense[]; appointments: Appointment[]; navigate: (section: Section) => void }) {
+
+function Dashboard({
+  profile,
+  receipts,
+  expenses,
+  appointments,
+  navigate,
+}: {
+  profile: BusinessProfile;
+  receipts: Receipt[];
+  expenses: Expense[];
+  appointments: Appointment[];
+  navigate: (section: Section) => void;
+}) {
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
-  const start = periodStart(period);
-  const revenue = receipts.filter((r) => r.paymentDate >= start).reduce((sum, r) => sum + r.amount, 0);
-  const spent = expenses.filter((e) => e.date >= start).reduce((sum, e) => sum + e.amount, 0);
-  const upcoming = appointments.filter((item) => item.date >= today()).sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).slice(0, 3);
-  const user = profile.ownerName ? profile.ownerName.split(' ')[0] : 'por aqui';
-  return <div className="page"><PageTitle eyebrow="Resumo do seu negócio" title={`Tudo certo, ${user}.`} description="Uma visão tranquila do que está acontecendo hoje." action="Novo recibo" onAction={() => navigate('receipt')} /><div className="period-switch"><span>Visão financeira</span>{(['week', 'month', 'year'] as const).map((value) => <button key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value === 'week' ? '7 dias' : value === 'month' ? 'Este mês' : 'Este ano'}</button>)}</div><section className="metric-grid"><MetricCard icon="wallet" label="Receitas" value={money(revenue)} tone="lavender" note={revenue ? 'recibos finalizados' : 'ainda sem receitas'} /><MetricCard icon="trend" label="Despesas" value={money(spent)} tone="coral" note={spent ? 'valores registrados' : 'nenhuma despesa'} /><MetricCard icon="target" label="Resultado líquido" value={money(revenue - spent)} tone="mint" note="receitas menos despesas" /><MetricCard icon="receipt" label="Recibos emitidos" value={String(receipts.length)} tone="yellow" note="documentos finalizados" /></section><section className="dashboard-grid"><div className="card chart-card"><div className="card-heading"><div><span className="section-kicker">Movimento</span><h2>Seu dinheiro em perspectiva</h2></div><span className="trend-badge"><Icon name="trend" size={14} /> {revenue - spent >= 0 ? 'saldo positivo' : 'revisar saldo'}</span></div><div className="chart-area"><div className="chart-y"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0</span></div><div className="chart-bars">{[35, 54, 42, 74, 48, 68, revenue ? 88 : 18].map((height, index) => <div className="bar-group" key={index}><div className="bar-track"><div className="bar revenue" style={{ height: `${height}%` }} /><div className="bar expense" style={{ height: `${Math.max(10, height * .42)}%` }} /></div><span>{['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Hoje'][index]}</span></div>)}</div></div><div className="chart-legend"><span><i className="legend-dot purple" /> Entradas</span><span><i className="legend-dot coral" /> Saídas</span><button className="text-button" onClick={() => navigate('history')}>Ver histórico <Icon name="arrow" size={14} /></button></div></div></section><section className="dashboard-grid lower-grid"><div className="card upcoming-card"><div className="card-heading"><div><span className="section-kicker">Agenda</span><h2>Próximos compromissos</h2></div><button className="icon-button" onClick={() => navigate('agenda')} aria-label="Abrir agenda"><Icon name="arrow" /></button></div>{upcoming.length ? <div className="upcoming-list">{upcoming.map((item) => <div className="upcoming-item" key={item.id}><div className="date-tile"><strong>{new Date(`${item.date}T12:00:00`).getDate()}</strong><span>{new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(new Date(`${item.date}T12:00:00`)).replace('.', '')}</span></div><div><strong>{item.description}</strong><span><Icon name="clock" size={13} /> {item.time}{item.address ? ` · ${item.address}` : ''}</span></div></div>)}</div> : <EmptyState title="Agenda livre por enquanto" text="Adicione um compromisso para Júlio lembrar você." action="Criar agendamento" onAction={() => navigate('agenda')} mood="thinking" />}</div><div className="card quick-card"><div className="card-heading"><div><span className="section-kicker">Atalhos</span><h2>O que você precisa?</h2></div></div><div className="quick-actions"><button onClick={() => navigate('costs')}><span className="quick-icon lilac"><Icon name="calculator" /></span><span>Calcular um preço</span><Icon name="chevron" size={16} /></button><button onClick={() => navigate('agenda')}><span className="quick-icon blue"><Icon name="calendar" /></span><span>Marcar compromisso</span><Icon name="chevron" size={16} /></button><button onClick={() => navigate('profile')}><span className="quick-icon yellow"><Icon name="user" /></span><span>Completar meu perfil</span><Icon name="chevron" size={16} /></button></div></div></section><p className="privacy-note"><Icon name="lock" size={14} /> Seus dados ficam neste dispositivo. PJ OWL funciona sem depender de internet.</p></div>;
+
+  type ChartBucket = {
+    key: string;
+    label: string;
+    revenue: number;
+    expense: number;
+  };
+
+  // Usa datas locais para evitar diferenças causadas pelo fuso horário.
+  const getLocalDateKey = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseLocalDate = (value: string) => {
+    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
+
+    if (!year || !month || !day) return null;
+
+    const date = new Date(year, month - 1, day);
+
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+
+  const todayKey = getLocalDateKey(todayDate);
+
+  const monthNames = [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+  ];
+
+  const finalizedReceipts = receipts.filter(
+    (receipt) => receipt.status === 'FINALIZADO'
+  );
+
+  let buckets: ChartBucket[] = [];
+
+  // SEMANA: sete dias, incluindo hoje.
+  if (period === 'week') {
+    buckets = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(todayDate);
+      date.setDate(todayDate.getDate() - (6 - index));
+
+      const key = getLocalDateKey(date);
+
+      return {
+        key,
+        label: new Intl.DateTimeFormat('pt-BR', {
+          weekday: 'short',
+        }).format(date).replace('.', ''),
+        revenue: 0,
+        expense: 0,
+      };
+    });
+  }
+
+  // MÊS: últimos 12 meses, agrupados por mês.
+  if (period === 'month') {
+    buckets = Array.from({ length: 12 }, (_, index) => {
+      const date = new Date(
+        todayDate.getFullYear(),
+        todayDate.getMonth() - 11 + index,
+        1
+      );
+
+      const key = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, '0')}`;
+
+      return {
+        key,
+        label: `${monthNames[date.getMonth()]}/${String(
+          date.getFullYear()
+        ).slice(-2)}`,
+        revenue: 0,
+        expense: 0,
+      };
+    });
+  }
+
+  // ANO: somente anos que possuem receitas ou despesas registradas.
+  if (period === 'year') {
+    const registeredYears = new Set<number>();
+
+    finalizedReceipts.forEach((receipt) => {
+      const date = parseLocalDate(receipt.paymentDate);
+      if (date) registeredYears.add(date.getFullYear());
+    });
+
+    expenses.forEach((expense) => {
+      const date = parseLocalDate(expense.date);
+      if (date) registeredYears.add(date.getFullYear());
+    });
+
+    buckets = Array.from(registeredYears)
+      .sort((a, b) => a - b)
+      .map((year) => ({
+        key: String(year),
+        label: String(year),
+        revenue: 0,
+        expense: 0,
+      }));
+  }
+
+  // Distribui as receitas nos respectivos períodos.
+  finalizedReceipts.forEach((receipt) => {
+    const date = parseLocalDate(receipt.paymentDate);
+    if (!date) return;
+
+    let key = '';
+
+    if (period === 'week') {
+      key = getLocalDateKey(date);
+    } else if (period === 'month') {
+      key = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, '0')}`;
+    } else {
+      key = String(date.getFullYear());
+    }
+
+    const bucket = buckets.find((item) => item.key === key);
+
+    if (bucket) {
+      bucket.revenue += receipt.amount;
+    }
+  });
+
+  // Distribui as despesas nos respectivos períodos.
+  expenses.forEach((expense) => {
+    const date = parseLocalDate(expense.date);
+    if (!date) return;
+
+    let key = '';
+
+    if (period === 'week') {
+      key = getLocalDateKey(date);
+    } else if (period === 'month') {
+      key = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, '0')}`;
+    } else {
+      key = String(date.getFullYear());
+    }
+
+    const bucket = buckets.find((item) => item.key === key);
+
+    if (bucket) {
+      bucket.expense += expense.amount;
+    }
+  });
+
+  // Totais calculados a partir dos mesmos dados apresentados no gráfico.
+  const revenue = buckets.reduce(
+    (sum, bucket) => sum + bucket.revenue,
+    0
+  );
+
+  const spent = buckets.reduce(
+    (sum, bucket) => sum + bucket.expense,
+    0
+  );
+
+  const visibleKeys = new Set(buckets.map((bucket) => bucket.key));
+
+  const receiptCount = finalizedReceipts.filter((receipt) => {
+    const date = parseLocalDate(receipt.paymentDate);
+    if (!date) return false;
+
+    const key =
+      period === 'week'
+        ? getLocalDateKey(date)
+        : period === 'month'
+          ? `${date.getFullYear()}-${String(
+              date.getMonth() + 1
+            ).padStart(2, '0')}`
+          : String(date.getFullYear());
+
+    return visibleKeys.has(key);
+  }).length;
+
+  // Escala automática do gráfico.
+  const highestValue = Math.max(
+    0,
+    ...buckets.map((bucket) =>
+      Math.max(bucket.revenue, bucket.expense)
+    )
+  );
+
+  const chartScale = highestValue > 0 ? highestValue * 1.15 : 100;
+
+  const axisValues = [
+    chartScale,
+    chartScale * 0.75,
+    chartScale * 0.5,
+    chartScale * 0.25,
+    0,
+  ];
+
+  const upcoming = appointments
+    .filter((item) => item.date >= todayKey)
+    .sort((a, b) =>
+      `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
+    )
+    .slice(0, 3);
+
+  const user = profile.ownerName
+    ? profile.ownerName.split(' ')[0]
+    : 'por aqui';
+
+  const periodLabels = {
+    week: 'Últimos 7 dias',
+    month: 'Últimos 12 meses',
+    year: 'Anos com registro',
+  };
+
+  return (
+    <div className="page">
+      <PageTitle
+        eyebrow="Resumo do seu negócio"
+        title={`Tudo certo, ${user}.`}
+        description="Uma visão tranquila do que está acontecendo hoje."
+        action="Novo recibo"
+        onAction={() => navigate('receipt')}
+      />
+
+      <div className="period-switch">
+        <span>Visão financeira</span>
+
+        {(['week', 'month', 'year'] as const).map((value) => (
+          <button
+            key={value}
+            className={period === value ? 'active' : ''}
+            onClick={() => setPeriod(value)}
+          >
+            {value === 'week'
+              ? 'Semana'
+              : value === 'month'
+                ? 'Mês'
+                : 'Ano'}
+          </button>
+        ))}
+      </div>
+
+      <section className="metric-grid">
+        <MetricCard
+          icon="wallet"
+          label="Receitas"
+          value={money(revenue)}
+          tone="lavender"
+          note={revenue ? 'recibos finalizados' : 'ainda sem receitas'}
+        />
+
+        <MetricCard
+          icon="trend"
+          label="Despesas"
+          value={money(spent)}
+          tone="coral"
+          note={spent ? 'valores registrados' : 'nenhuma despesa'}
+        />
+
+        <MetricCard
+          icon="target"
+          label="Resultado líquido"
+          value={money(revenue - spent)}
+          tone="mint"
+          note="receitas menos despesas"
+        />
+
+        <MetricCard
+          icon="receipt"
+          label="Recibos emitidos"
+          value={String(receiptCount)}
+          tone="yellow"
+          note="documentos finalizados"
+        />
+      </section>
+
+      <section className="dashboard-grid">
+        <div className="card chart-card">
+          <div className="card-heading">
+            <div>
+              <span className="section-kicker">Movimento</span>
+              <h2>Seu dinheiro em perspectiva</h2>
+              <small>{periodLabels[period]}</small>
+            </div>
+
+            <span className="trend-badge">
+              <Icon name="trend" size={14} />
+              {revenue - spent >= 0
+                ? 'saldo positivo'
+                : 'revisar saldo'}
+            </span>
+          </div>
+
+          <div className="chart-area">
+            <div className="chart-y">
+              {axisValues.map((value, index) => (
+                <span key={index}>
+                  {money(value)}
+                </span>
+              ))}
+            </div>
+
+            <div className="chart-bars">
+              {buckets.map((bucket) => {
+                const revenueHeight =
+                  (bucket.revenue / chartScale) * 100;
+
+                const expenseHeight =
+                  (bucket.expense / chartScale) * 100;
+
+                return (
+                  <div className="bar-group" key={bucket.key}>
+                    <div
+                      className="bar-track"
+                      title={`${bucket.label} | Entradas: ${money(
+                        bucket.revenue
+                      )} | Saídas: ${money(bucket.expense)}`}
+                    >
+                      <div
+                        className="bar revenue"
+                        style={{
+                          height: `${revenueHeight}%`,
+                        }}
+                      />
+
+                      <div
+                        className="bar expense"
+                        style={{
+                          height: `${expenseHeight}%`,
+                        }}
+                      />
+                    </div>
+
+                    <span>{bucket.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {!buckets.some(
+            (bucket) => bucket.revenue > 0 || bucket.expense > 0
+          ) && (
+            <p className="chart-empty-note">
+              Ainda não existem movimentações neste período.
+              Seus registros aparecerão aqui automaticamente.
+            </p>
+          )}
+
+          <div className="chart-legend">
+            <span>
+              <i className="legend-dot purple" />
+              Entradas
+            </span>
+
+            <span>
+              <i className="legend-dot coral" />
+              Saídas
+            </span>
+
+            <button
+              className="text-button"
+              onClick={() => navigate('history')}
+            >
+              Ver histórico <Icon name="arrow" size={14} />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="dashboard-grid lower-grid">
+        <div className="card upcoming-card">
+          <div className="card-heading">
+            <div>
+              <span className="section-kicker">Agenda</span>
+              <h2>Próximos compromissos</h2>
+            </div>
+
+            <button
+              className="icon-button"
+              onClick={() => navigate('agenda')}
+              aria-label="Abrir agenda"
+            >
+              <Icon name="arrow" />
+            </button>
+          </div>
+
+          {upcoming.length ? (
+            <div className="upcoming-list">
+              {upcoming.map((item) => (
+                <div className="upcoming-item" key={item.id}>
+                  <div className="date-tile">
+                    <strong>
+                      {new Date(`${item.date}T12:00:00`).getDate()}
+                    </strong>
+
+                    <span>
+                      {new Intl.DateTimeFormat('pt-BR', {
+                        month: 'short',
+                      })
+                        .format(new Date(`${item.date}T12:00:00`))
+                        .replace('.', '')}
+                    </span>
+                  </div>
+
+                  <div>
+                    <strong>{item.description}</strong>
+                    <span>
+                      <Icon name="clock" size={13} />
+                      {item.time}
+                      {item.address ? ` · ${item.address}` : ''}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="Agenda livre por enquanto"
+              text="Adicione um compromisso para Júlio lembrar você."
+              action="Criar agendamento"
+              onAction={() => navigate('agenda')}
+              mood="thinking"
+            />
+          )}
+        </div>
+
+        <div className="card quick-card">
+          <div className="card-heading">
+            <div>
+              <span className="section-kicker">Atalhos</span>
+              <h2>O que você precisa?</h2>
+            </div>
+          </div>
+
+          <div className="quick-actions">
+            <button onClick={() => navigate('costs')}>
+              <span className="quick-icon lilac">
+                <Icon name="calculator" />
+              </span>
+              <span>Calcular um preço</span>
+              <Icon name="chevron" size={16} />
+            </button>
+
+            <button onClick={() => navigate('agenda')}>
+              <span className="quick-icon blue">
+                <Icon name="calendar" />
+              </span>
+              <span>Marcar compromisso</span>
+              <Icon name="chevron" size={16} />
+            </button>
+
+            <button onClick={() => navigate('profile')}>
+              <span className="quick-icon yellow">
+                <Icon name="user" />
+              </span>
+              <span>Completar meu perfil</span>
+              <Icon name="chevron" size={16} />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <p className="privacy-note">
+        <Icon name="lock" size={14} />
+        Seus dados ficam neste dispositivo. PJ OWL funciona sem depender de internet.
+      </p>
+    </div>
+  );
 }
+
 function MetricCard({ icon, label, value, note, tone }: { icon: IconName; label: string; value: string; note: string; tone: string }) { return <div className={`metric-card tone-${tone}`}><div className="metric-icon"><Icon name={icon} /></div><span>{label}</span><strong>{value}</strong><small>{note}</small></div>; }
 
 function Costs({ compositions, setCompositions, notify }: { compositions: Composition[]; setCompositions: React.Dispatch<React.SetStateAction<Composition[]>>; notify: (message: string) => void }) {
