@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   compatible,
   parseMoney,
+  money,
+  toBase,
   proportionalCost,
   unitGroup,
 } from './utils';
@@ -12,6 +14,8 @@ describe('domain utilities', () => {
     expect(parseMoney('R$ 1.234,56')).toBe(123456);
     expect(parseMoney('25,90')).toBe(2590);
     expect(parseMoney('')).toBe(0);
+    expect(money(123456, 'BRL')).toContain('1.234,56');
+    expect(money(123456, 'USD')).toContain('1.234,56');
   });
 
   it('groups compatible measurement units', () => {
@@ -20,6 +24,9 @@ describe('domain utilities', () => {
     expect(compatible('ml', 'L')).toBe(true);
     expect(compatible('cm', 'g')).toBe(false);
     expect(unitGroup('un')).toBe('count');
+    expect(toBase(1000, 'mm')).toBe(1);
+    expect(toBase(2, 'kg')).toBe(2000);
+    expect(toBase(1.5, 'L')).toBe(1500);
   });
 
   it('calculates proportional material cost in cents', () => {

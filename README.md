@@ -30,7 +30,8 @@ src/
 │   ├── history/
 │   ├── profile/
 │   └── receipts/
-├── shared/
+├── integration/            # cenários integrados de recibos e persistência
+└── shared/
 │   ├── components/         # componentes visuais reutilizáveis
 │   ├── layout/             # navegação e estrutura visual
 │   └── storage/             # persistência, repositórios, migrações e backup
@@ -64,6 +65,7 @@ pnpm build
 - `pnpm check`: verifica os tipos TypeScript.
 - `pnpm test`: executa os testes automatizados uma vez.
 - `pnpm test:watch`: mantém os testes em observação durante o desenvolvimento.
+- `pnpm test:ci`: executa a suíte em modo não interativo no pipeline de CI.
 - `pnpm build`: executa a verificação TypeScript e gera a versão de produção.
 - `pnpm preview`: serve localmente o build gerado.
 
@@ -82,8 +84,8 @@ pnpm build
 ## Estratégia de testes
 
 - **Unitários:** cálculos, formatação, validações, migrações e backup.
-- **Integração:** repositórios e adaptadores de persistência.
-- **Interface/E2E:** fluxos de recibo, agenda, custos, histórico e perfil. A automação E2E será adicionada quando a configuração Playwright for incorporada ao projeto.
+- **Integração:** finalização de recibos, persistência via repositórios, releitura e filtros do histórico.
+- **Interface/E2E:** fluxos de recibo, agenda, custos, histórico e perfil. A automação E2E de navegador ainda não está configurada; a suíte atual cobre regras unitárias e integração de domínio/persistência.
 
 ## Arquitetura e decisões
 

@@ -8,6 +8,9 @@ import type { KeyValueStorage, Repository } from './shared/storage/types';
 import { formatDocument, getOptionalDocumentError, normalizeDocument, sanitizeDocumentInput } from './shared/validation/document';
 import { formatMoneyInput, parseDecimalInput, sanitizeDecimalInput } from './shared/validation/numeric';
 import { amountToWords } from './domain/moneyWords';
+import { calculatePricing } from './domain/financial';
+import { compatible as unitsAreCompatible, parseMoney as parseMoneyValue, proportionalCost as calculateProportionalCost } from './domain/utils';
+import { filterReceipts, finalizeReceipt } from './domain/receipts';
 import { convertUsdCentsToBrlCents, fetchUsdBrlRate, formatExchangeRateDate, getCachedExchangeRate, type ExchangeRate } from './features/receipts/exchangeRate';
 
 type Section = 'dashboard' | 'costs' | 'agenda' | 'receipt' | 'history' | 'profile';
@@ -98,11 +101,7 @@ const navItems: { id: Section; label: string; icon: IconName }[] = [
   { id: 'profile', label: 'Perfil', icon: 'user' },
 ];
 
-function parseMoney(value: string) {
-  const normalized = value.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-}
+function parseMoney(value: string) { return parseMoneyValue(value); }
 function money(cents: number, currency: Currency = 'BRL') {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format((cents || 0) / 100);
 }
@@ -115,16 +114,8 @@ function longDate(value: string) {
   return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(`${value}T12:00:00`));
 }
 function initials(name: string) { return name ? name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase() : 'RF'; }
-function unitGroup(unit: Unit) { return ['mm', 'cm', 'm'].includes(unit) ? 'length' : ['g', 'kg'].includes(unit) ? 'weight' : ['ml', 'L'].includes(unit) ? 'volume' : 'count'; }
-function toBase(quantity: number, unit: Unit) {
-  const factors: Record<Unit, number> = { mm: 0.001, cm: 0.01, m: 1, g: 1, kg: 1000, ml: 1, L: 1000, un: 1 };
-  return quantity * factors[unit];
-}
-function compatible(a: Unit, b: Unit) { return unitGroup(a) === unitGroup(b); }
-function proportionalCost(item: CostItem) {
-  if (!item.referenceQuantity || !item.usedQuantity || !compatible(item.usedUnit, item.referenceUnit)) return 0;
-  return Math.round(item.referencePrice * (toBase(item.usedQuantity, item.usedUnit) / toBase(item.referenceQuantity, item.referenceUnit)));
-}
+function compatible(a: Unit, b: Unit) { return unitsAreCompatible(a, b); }
+function proportionalCost(item: CostItem) { return calculateProportionalCost(item); }
 function periodStart(period: 'week' | 'month' | 'year') {
   const date = new Date();
   if (period === 'week') date.setDate(date.getDate() - 6);
@@ -355,9 +346,8 @@ function Costs({ compositions, setCompositions, notify }: { compositions: Compos
   const timeTotal = billingMode === 'time' ? parseMoney(timePrice) * Math.max(1, parseDecimalInput(timeQuantity)) : 0;
   const total = billingMode === 'materials' ? materialTotal : timeTotal;
   const percent = Math.max(0, Number(percentage.replace(',', '.')) || 0) / 100;
-  const suggested = pricingMode === 'markup' ? Math.round(total * (1 + percent)) : percent >= 1 ? total : Math.round(total / (1 - percent));
-  const finalPrice = manualPrice ? parseMoney(manualPrice) : suggested;
-  const profit = Math.max(0, finalPrice - total);
+  const pricing = calculatePricing(total, percent * 100, pricingMode, manualPrice ? parseMoney(manualPrice) : undefined);
+  const { suggestedPrice: suggested, finalPrice, profit } = pricing;
   const billingLabels: Record<string, string> = { monthly: 'mensal', weekly: 'semanal', daily: 'diária', hourly: 'por hora', request: 'por requisição', project: 'por projeto' };
   const addItem = (event: React.FormEvent) => {
     event.preventDefault();
@@ -424,7 +414,7 @@ function ReceiptCreator({ profile, setReceipts, navigate, notify }: { profile: B
     if (!form.clientName || enteredAmount <= 0 || !form.paymentDate) { notify('Preencha cliente, valor e data de pagamento.'); return; }
     if (!providerSignature || !clientSignature) { notify('As duas assinaturas são necessárias para finalizar.'); return; }
     if (form.currency === 'USD' && !exchangeRate) { notify('Não foi possível obter a cotação do dólar. Conecte-se à internet e tente novamente.'); return; }
-    const receipt: Receipt = {
+    const receipt: Receipt = finalizeReceipt({
       id: `RF-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       clientName: form.clientName, clientDocument: normalizeDocument(form.clientDocument),
       providerName: profile.ownerName, providerDocument: normalizeDocument(profile.document),
@@ -433,8 +423,8 @@ function ReceiptCreator({ profile, setReceipts, navigate, notify }: { profile: B
       ...(form.currency === 'USD' && exchangeRate ? { originalCurrency: 'USD' as const, originalAmount: enteredAmount, exchangeRate: exchangeRate.rate, exchangeRateDate: exchangeRate.quotedAt } : {}),
       paymentMethod: form.paymentMethod, installment: form.installment, notes: form.notes,
       paymentDate: form.paymentDate, providerSignature, clientSignature,
-      finalizedAt: new Date().toISOString(), status: 'FINALIZADO',
-    };
+      finalizedAt: new Date().toISOString(),
+    });
     setReceipts((current) => [receipt, ...current]);
     notify('Recibo finalizado e protegido no histórico.');
     navigate('history');
@@ -477,7 +467,7 @@ function ReceiptPreview({ profile, form, providerSignature, clientSignature, amo
 
 function History({ receipts, setDeleteTarget, notify }: { receipts: Receipt[]; setDeleteTarget: (target: { type: 'receipt' | 'all'; id?: string }) => void; notify: (message: string) => void }) {
   const [query, setQuery] = useState(''); const [from, setFrom] = useState(''); const [to, setTo] = useState('');
-  const filtered = receipts.filter((receipt) => receipt.clientName.toLowerCase().includes(query.toLowerCase()) && (!from || receipt.paymentDate >= from) && (!to || receipt.paymentDate <= to));
+  const filtered = filterReceipts(receipts, { query, from, to });
   return <div className="page"><PageTitle eyebrow="Tudo que já foi entregue" title="Histórico de recibos" description="Documentos finalizados ficam aqui, sempre em modo somente leitura." action={receipts.length ? 'Limpar histórico' : undefined} onAction={() => setDeleteTarget({ type: 'all' })} icon="history" /><div className="history-tools card"><div className="search-field"><Icon name="search" size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por cliente" /></div><div className="date-filter"><Icon name="filter" size={16} /><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Data inicial" /><span>até</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Data final" /></div></div>{filtered.length ? <div className="history-list">{filtered.map((receipt) => <ReceiptRow key={receipt.id} receipt={receipt} onDelete={() => setDeleteTarget({ type: 'receipt', id: receipt.id })} notify={notify} />)}</div> : <div className="card"><EmptyState title={receipts.length ? 'Nada encontrado por aqui' : 'Seu histórico está esperando o primeiro recibo'} text={receipts.length ? 'Tente mudar a busca ou o período selecionado.' : 'Quando você finalizar um recibo, ele aparecerá aqui protegido contra alterações.'} mood="thinking" /></div>}<p className="privacy-note"><Icon name="lock" size={14} /> Um recibo finalizado não pode ser editado. Se precisar corrigir algo, crie um novo documento.</p></div>;
 }
 function ReceiptRow({ receipt, onDelete, notify }: { receipt: Receipt; onDelete: () => void; notify: (message: string) => void }) {

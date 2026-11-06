@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Composition, CostItem, PricingMode, Unit } from '../../domain/models';
+import { calculatePricing } from '../../domain/financial';
 import { compatible, money, parseMoney, proportionalCost, shortDate, toBase, uid, unitGroup, units } from '../../domain/utils';
 import { Button, EmptyState, Field, Icon } from '../../shared/components/ui';
 import { PageTitle } from '../../shared/layout/AppLayout';
@@ -14,9 +15,8 @@ export function Costs({ compositions, setCompositions, notify }: { compositions:
   const timeTotal = billingMode === 'time' ? parseMoney(timePrice) * Math.max(1, Number(timeQuantity) || 1) : 0;
   const total = billingMode === 'materials' ? materialTotal : timeTotal;
   const percent = Math.max(0, Number(percentage.replace(',', '.')) || 0) / 100;
-  const suggested = pricingMode === 'markup' ? Math.round(total * (1 + percent)) : percent >= 1 ? total : Math.round(total / (1 - percent));
-  const finalPrice = manualPrice ? parseMoney(manualPrice) : suggested;
-  const profit = Math.max(0, finalPrice - total);
+  const pricing = calculatePricing(total, percent * 100, pricingMode, manualPrice ? parseMoney(manualPrice) : undefined);
+  const { suggestedPrice: suggested, finalPrice, profit } = pricing;
   const billingLabels: Record<string, string> = { monthly: 'mensal', weekly: 'semanal', daily: 'diária', hourly: 'por hora', request: 'por requisição', project: 'por projeto' };
   const addItem = (event: React.FormEvent) => {
     event.preventDefault();

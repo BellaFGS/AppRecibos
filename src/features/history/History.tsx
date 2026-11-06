@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import type { Receipt } from '../../domain/models';
 import { longDate, money, shortDate } from '../../domain/utils';
 import { amountToWords } from '../../domain/moneyWords';
+import { filterReceipts } from '../../domain/receipts';
 import { formatExchangeRateDate } from '../receipts/exchangeRate';
 import { Button, EmptyState, Icon } from '../../shared/components/ui';
 import { PageTitle } from '../../shared/layout/AppLayout';
 
 export function History({ receipts, setDeleteTarget, notify }: { receipts: Receipt[]; setDeleteTarget: (target: { type: 'receipt' | 'all'; id?: string }) => void; notify: (message: string) => void }) {
   const [query, setQuery] = useState(''); const [from, setFrom] = useState(''); const [to, setTo] = useState('');
-  const filtered = receipts.filter((receipt) => receipt.clientName.toLowerCase().includes(query.toLowerCase()) && (!from || receipt.paymentDate >= from) && (!to || receipt.paymentDate <= to));
+  const filtered = filterReceipts(receipts, { query, from, to });
   return <div className="page"><PageTitle eyebrow="Tudo que já foi entregue" title="Histórico de recibos" description="Documentos finalizados ficam aqui, sempre em modo somente leitura." action={receipts.length ? 'Limpar histórico' : undefined} onAction={() => setDeleteTarget({ type: 'all' })} icon="history" /><div className="history-tools card"><div className="search-field"><Icon name="search" size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por cliente" /></div><div className="date-filter"><Icon name="filter" size={16} /><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Data inicial" /><span>até</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Data final" /></div></div>{filtered.length ? <div className="history-list">{filtered.map((receipt) => <ReceiptRow key={receipt.id} receipt={receipt} onDelete={() => setDeleteTarget({ type: 'receipt', id: receipt.id })} notify={notify} />)}</div> : <div className="card"><EmptyState title={receipts.length ? 'Nada encontrado por aqui' : 'Seu histórico está esperando o primeiro recibo'} text={receipts.length ? 'Tente mudar a busca ou o período selecionado.' : 'Quando você finalizar um recibo, ele aparecerá aqui protegido contra alterações.'} mood="thinking" /></div>}<p className="privacy-note"><Icon name="lock" size={14} /> Um recibo finalizado não pode ser editado. Se precisar corrigir algo, crie um novo documento.</p></div>;
 }
 
