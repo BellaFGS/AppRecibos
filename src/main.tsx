@@ -1,6 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import { initializeStorage } from './shared/storage/storageProvider';
+import { createRepositories, loadAllRepositories, type AppRepositories } from './shared/storage/repositories';
+import { createBackup, downloadBackupFile, getStorageUsageBytes, restoreBackup } from './shared/storage/backup';
+import type { KeyValueStorage, Repository } from './shared/storage/types';
 
 type Section = 'dashboard' | 'costs' | 'agenda' | 'receipt' | 'history' | 'profile';
 type Currency = 'BRL' | 'USD';
@@ -86,15 +90,6 @@ const navItems: { id: Section; label: string; icon: IconName }[] = [
   { id: 'profile', label: 'Perfil', icon: 'user' },
 ];
 
-function readStore<T>(key: string, fallback: T): T {
-  try {
-    const value = localStorage.getItem(`recibofacil:${key}`);
-    return value ? JSON.parse(value) as T : fallback;
-  } catch { return fallback; }
-}
-function writeStore(key: string, value: unknown) {
-  try { localStorage.setItem(`recibofacil:${key}`, JSON.stringify(value)); } catch { /* armazenamento pode estar indisponível */ }
-}
 function parseMoney(value: string) {
   const normalized = value.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
   const parsed = Number(normalized);
@@ -130,11 +125,6 @@ function periodStart(period: 'week' | 'month' | 'year') {
   return date.toISOString().slice(0, 10);
 }
 
-function usePersistedState<T>(key: string, fallback: T) {
-  const [value, setValue] = useState<T>(() => readStore(key, fallback));
-  useEffect(() => writeStore(key, value), [key, value]);
-  return [value, setValue] as const;
-}
 
 type IconName = 'home' | 'calculator' | 'calendar' | 'receipt' | 'history' | 'user' | 'plus' | 'arrow' | 'trend' | 'wallet' | 'clock' | 'check' | 'trash' | 'edit' | 'download' | 'share' | 'search' | 'info' | 'dollar' | 'spark' | 'menu' | 'close' | 'chevron' | 'upload' | 'signature' | 'target' | 'bell' | 'package' | 'copy' | 'filter' | 'back' | 'more' | 'lock';
 function Icon({ name, size = 19 }: { name: IconName; size?: number }) {
@@ -217,15 +207,89 @@ function SignaturePad({ label, value, onChange }: { label: string; value: string
 
 function App() {
   const [active, setActive] = useState<Section>('dashboard');
-  const [profile, setProfile] = usePersistedState<BusinessProfile>('profile', defaultProfile);
-  const [compositions, setCompositions] = usePersistedState<Composition[]>('compositions', []);
-  const [appointments, setAppointments] = usePersistedState<Appointment[]>('appointments', []);
-  const [expenses, setExpenses] = usePersistedState<Expense[]>('expenses', []);
-  const [receipts, setReceipts] = usePersistedState<Receipt[]>('receipts', []);
+  const [profile, setProfileState] = useState<BusinessProfile>(defaultProfile);
+  const [compositions, setCompositionsState] = useState<Composition[]>([]);
+  const [appointments, setAppointmentsState] = useState<Appointment[]>([]);
+  const [expenses, setExpensesState] = useState<Expense[]>([]);
+  const [receipts, setReceiptsState] = useState<Receipt[]>([]);
   const [toast, setToast] = useState('');
+  const [storageReady, setStorageReady] = useState(false);
+  const [storageError, setStorageError] = useState('');
+  const [storageUsage, setStorageUsage] = useState(0);
+  const repositoriesRef = useRef<AppRepositories | null>(null);
+  const storageRef = useRef<KeyValueStorage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'receipt' | 'appointment' | 'expense' | 'all'; id?: string } | null>(null);
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 3200); };
   const navigate = (section: Section) => setActive(section);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const initialized = await initializeStorage();
+      const repositories = createRepositories(initialized.storage);
+      const data = await loadAllRepositories(repositories);
+      if (!mounted) return;
+      storageRef.current = initialized.storage;
+      repositoriesRef.current = repositories;
+      setProfileState(data.profile as BusinessProfile);
+      setCompositionsState(data.compositions as Composition[]);
+      setAppointmentsState(data.appointments as Appointment[]);
+      setExpensesState(data.expenses as Expense[]);
+      setReceiptsState(data.receipts as Receipt[]);
+      setStorageUsage(await getStorageUsageBytes(initialized.storage));
+      setStorageReady(true);
+    })().catch((error: unknown) => {
+      if (!mounted) return;
+      setStorageError(error instanceof Error ? error.message : 'Não foi possível inicializar o armazenamento local.');
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const setProfile: React.Dispatch<React.SetStateAction<BusinessProfile>> = setProfileState;
+  const setCompositions: React.Dispatch<React.SetStateAction<Composition[]>> = setCompositionsState;
+  const setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>> = setAppointmentsState;
+  const setExpenses: React.Dispatch<React.SetStateAction<Expense[]>> = setExpensesState;
+  const setReceipts: React.Dispatch<React.SetStateAction<Receipt[]>> = setReceiptsState;
+
+  useEffect(() => {
+    if (!storageReady || !repositoriesRef.current) return;
+    const repositories = repositoriesRef.current;
+    void Promise.all([
+      repositories.profile.save(profile), repositories.compositions.save(compositions),
+      repositories.appointments.save(appointments), repositories.expenses.save(expenses),
+      repositories.receipts.save(receipts),
+    ]).then(async () => {
+      if (storageRef.current) setStorageUsage(await getStorageUsageBytes(storageRef.current));
+    }).catch(() => notify('Não foi possível gravar os dados. Verifique o espaço disponível e tente novamente.'));
+  }, [profile, compositions, appointments, expenses, receipts, storageReady]);
+
+  const exportBackup = async () => {
+    try {
+      if (!storageRef.current) throw new Error('O armazenamento ainda não está pronto.');
+      downloadBackupFile(await createBackup(storageRef.current));
+      notify('Backup exportado com sucesso. Guarde o arquivo em outro local.');
+    } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível exportar o backup.'); }
+  };
+  const importBackup = async (file: File) => {
+    try {
+      if (!storageRef.current) throw new Error('O armazenamento ainda não está pronto.');
+      if (file.size > 25 * 1024 * 1024) throw new Error('O arquivo excede o limite de 25 MB.');
+      const raw: unknown = JSON.parse(await file.text());
+      await restoreBackup(storageRef.current, raw);
+      const data = await loadAllRepositories(repositoriesRef.current!);
+      setProfileState(data.profile as BusinessProfile);
+      setCompositionsState(data.compositions as Composition[]);
+      setAppointmentsState(data.appointments as Appointment[]);
+      setExpensesState(data.expenses as Expense[]);
+      setReceiptsState(data.receipts as Receipt[]);
+      setStorageUsage(await getStorageUsageBytes(storageRef.current));
+      notify('Backup restaurado. Seus dados foram atualizados.');
+    } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível restaurar o backup.'); }
+  };
+
+  if (storageError) return <div className="app-shell"><main className="main-content"><div className="card form-card"><h1>Não foi possível abrir seus dados</h1><p>{storageError}</p><p>Seus dados antigos não foram apagados. Recarregue o aplicativo ou tente novamente em outro navegador.</p><Button onClick={() => window.location.reload()}>Tentar novamente</Button></div></main></div>;
+  if (!storageReady) return <div className="app-shell"><main className="main-content"><div className="card form-card"><Mascot mood="thinking" /><h2>Preparando seu espaço...</h2><p className="muted">Júlio está organizando seus dados com segurança.</p></div></main></div>;
+
   const finalizedReceipts = receipts.filter((receipt) => receipt.status === 'FINALIZADO');
   const removeItem = () => {
     if (!deleteTarget) return;
@@ -244,7 +308,7 @@ function App() {
       {active === 'agenda' && <Agenda appointments={appointments} setAppointments={setAppointments} expenses={expenses} setExpenses={setExpenses} setDeleteTarget={setDeleteTarget} notify={notify} />}
       {active === 'receipt' && <ReceiptCreator profile={profile} setReceipts={setReceipts} navigate={navigate} notify={notify} />}
       {active === 'history' && <History receipts={finalizedReceipts} setDeleteTarget={setDeleteTarget} notify={notify} />}
-      {active === 'profile' && <Profile profile={profile} setProfile={setProfile} receipts={finalizedReceipts} notify={notify} />}
+      {active === 'profile' && <Profile profile={profile} setProfile={setProfile} receipts={finalizedReceipts} notify={notify} storageUsageBytes={storageUsage} onExportBackup={exportBackup} onImportBackup={importBackup} />}
     </main>
     {toast && <Toast message={toast} onClose={() => setToast('')} />}
     {deleteTarget && <ConfirmDialog title={deleteTarget.type === 'all' ? 'Limpar todo o histórico?' : 'Excluir este registro?'} text="Essa ação não poderá ser desfeita dentro do aplicativo. Seus dados de perfil, logo e assinatura padrão serão preservados." onCancel={() => setDeleteTarget(null)} onConfirm={removeItem} />}
@@ -331,12 +395,12 @@ function ReceiptRow({ receipt, onDelete, notify }: { receipt: Receipt; onDelete:
 }
 function receiptPrintHtml(receipt: Receipt) { return `<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${receipt.id}</title><style>body{font-family:Arial,sans-serif;color:#2f2642;max-width:760px;margin:40px auto;padding:0 32px}header{display:flex;justify-content:space-between;border-bottom:1px solid #ddd;padding-bottom:28px}h1{font-size:30px}h2{margin-top:48px}.amount{font-size:40px;font-weight:800;color:#7150b2}.details{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:36px 0}.details span{display:block;color:#8a8291;font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}.details strong{font-size:17px}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:70px;margin-top:90px}.signatures div{border-top:1px solid #bdb6c8;padding-top:10px;text-align:center;color:#62596e}.signatures img{width:100%;height:80px;object-fit:contain;display:block;margin-bottom:-4px}.footer{margin-top:70px;color:#8a8291;font-size:12px}</style></head><body><header><div><h1>${receipt.businessName || 'PJ OWL'}</h1><p>${receipt.providerName || ''} · ${receipt.providerDocument || ''}</p></div><strong>${receipt.id}</strong></header><h2>Recibo de pagamento</h2><p>Recebi de <strong>${receipt.clientName}</strong> a importância de:</p><div class="amount">${money(receipt.amount, receipt.currency)}</div><div class="details"><div><span>Referente a</span><strong>${receipt.description || 'Serviço ou produto'}</strong></div><div><span>Forma de pagamento</span><strong>${receipt.paymentMethod}</strong></div><div><span>Data</span><strong>${longDate(receipt.paymentDate)}</strong></div><div><span>Cliente</span><strong>${receipt.clientDocument || 'Documento não informado'}</strong></div></div>${receipt.notes ? `<p><strong>Observações:</strong> ${receipt.notes}</p>` : ''}<div class="signatures"><div><img src="${receipt.providerSignature}" alt=""><span>Prestador: ${receipt.providerName || '—'}</span></div><div><img src="${receipt.clientSignature}" alt=""><span>Cliente: ${receipt.clientName}</span></div></div><p class="footer">Documento gerado pelo PJ OWL em ${new Date(receipt.finalizedAt).toLocaleString('pt-BR')}. A assinatura desenhada é eletrônica simples.</p></body></html>`; }
 
-function Profile({ profile, setProfile, receipts, notify }: { profile: BusinessProfile; setProfile: React.Dispatch<React.SetStateAction<BusinessProfile>>; receipts: Receipt[]; notify: (message: string) => void }) {
-  const fileRef = useRef<HTMLInputElement>(null); const [draft, setDraft] = useState(profile); useEffect(() => setDraft(profile), [profile]);
+function Profile({ profile, setProfile, receipts, notify, storageUsageBytes, onExportBackup, onImportBackup }: { profile: BusinessProfile; setProfile: React.Dispatch<React.SetStateAction<BusinessProfile>>; receipts: Receipt[]; notify: (message: string) => void; storageUsageBytes: number; onExportBackup: () => void; onImportBackup: (file: File) => Promise<void> }) {
+  const fileRef = useRef<HTMLInputElement>(null); const backupRef = useRef<HTMLInputElement>(null); const [draft, setDraft] = useState(profile); useEffect(() => setDraft(profile), [profile]);
   const save = () => { setProfile(draft); notify('Perfil salvo neste dispositivo.'); };
   const handleLogo = (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => setDraft((current) => ({ ...current, logo: String(reader.result) })); reader.readAsDataURL(file); };
-  const storageKeys = ['profile', 'compositions', 'appointments', 'expenses', 'receipts']; const used = storageKeys.reduce((total, key) => total + (localStorage.getItem(`recibofacil:${key}`)?.length || 0), 0);
-  return <div className="page"><PageTitle eyebrow="Seu negócio, do seu jeito" title="Perfil e preferências" description="Esses dados ficam só neste dispositivo e deixam cada recibo mais completo." /><div className="profile-layout"><div className="profile-main"><div className="card form-card"><div className="card-heading"><div><span className="section-kicker">Identidade do negócio</span><h2>Como devemos chamar seu trabalho?</h2></div><span className="heading-icon lilac-bg"><Icon name="user" /></span></div><div className="stack-form"><div className="two-fields"><Field label="Seu nome"><input value={draft.ownerName} onChange={(e) => setDraft({ ...draft, ownerName: e.target.value })} placeholder="Nome completo" /></Field><Field label="Nome fantasia"><input value={draft.businessName} onChange={(e) => setDraft({ ...draft, businessName: e.target.value })} placeholder="Como seus clientes conhecem você" /></Field></div><div className="two-fields"><Field label="CPF/CNPJ"><input value={draft.document} onChange={(e) => setDraft({ ...draft, document: e.target.value })} placeholder="Opcional" /></Field><Field label="Início da atividade"><input type="date" value={draft.startDate} onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} /></Field></div><div className="logo-upload"><div className="logo-preview">{draft.logo ? <img src={draft.logo} alt="Logo do negócio" /> : <Mascot size="small" />}</div><div><strong>Logo do negócio</strong><p>PNG ou JPG para aparecer nos seus recibos.</p><input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={handleLogo} hidden /><Button variant="secondary" icon="upload" onClick={() => fileRef.current?.click()}>Importar imagem</Button>{draft.logo && <button className="text-button danger-text" onClick={() => setDraft({ ...draft, logo: '' })}>Remover logo</button>}</div></div><Button onClick={save} icon="check">Salvar dados do negócio</Button></div></div><div className="card signature-card"><div className="card-heading"><div><span className="section-kicker">Sua assinatura padrão</span><h2>Uma vez desenhada, sempre à mão</h2></div><span className="heading-icon yellow-bg"><Icon name="signature" /></span></div><p className="muted">Ela será carregada automaticamente ao criar um recibo. Você pode mudar a assinatura em um documento específico sem alterar esta versão.</p><SignaturePad label="Assinatura do prestador" value={draft.signature} onChange={(signature) => setDraft({ ...draft, signature })} /><Button onClick={save} icon="check">Salvar assinatura</Button></div></div><aside className="profile-side"><div className="card profile-card"><div className="profile-avatar">{draft.logo ? <img src={draft.logo} alt="Logo" /> : <span>{initials(draft.businessName || draft.ownerName)}</span>}</div><h2>{draft.businessName || 'Seu negócio'}</h2><p>{draft.ownerName || 'Complete seu perfil para personalizar os recibos.'}</p><div className="profile-stat"><span>Recibos finalizados</span><strong>{receipts.length}</strong></div></div><div className="card storage-card"><div className="card-heading"><div><span className="section-kicker">Armazenamento local</span><h2>Seus dados ficam aqui</h2></div><Icon name="lock" size={18} /></div><div className="storage-meter"><span style={{ width: `${Math.min(95, Math.max(5, used / 6000 * 100))}%` }} /></div><p>Este navegador está usando aproximadamente <strong>{Math.max(1, Math.round(used / 1024))} KB</strong> para o PJ OWL.</p><small>Ao limpar os dados do navegador, essas informações podem ser perdidas. Exporte recibos importantes antes de trocar de dispositivo.</small></div><div className="card julio-profile"><Mascot size="small" mood="success" /><div><strong>Júlio cuida da leveza.</strong><p>Você cuida do trabalho. O PJ OWL ajuda a deixar tudo organizado.</p></div></div></aside></div></div>;
+  const used = storageUsageBytes;
+  return <div className="page"><PageTitle eyebrow="Seu negócio, do seu jeito" title="Perfil e preferências" description="Esses dados ficam só neste dispositivo e deixam cada recibo mais completo." /><div className="profile-layout"><div className="profile-main"><div className="card form-card"><div className="card-heading"><div><span className="section-kicker">Identidade do negócio</span><h2>Como devemos chamar seu trabalho?</h2></div><span className="heading-icon lilac-bg"><Icon name="user" /></span></div><div className="stack-form"><div className="two-fields"><Field label="Seu nome"><input value={draft.ownerName} onChange={(e) => setDraft({ ...draft, ownerName: e.target.value })} placeholder="Nome completo" /></Field><Field label="Nome fantasia"><input value={draft.businessName} onChange={(e) => setDraft({ ...draft, businessName: e.target.value })} placeholder="Como seus clientes conhecem você" /></Field></div><div className="two-fields"><Field label="CPF/CNPJ"><input value={draft.document} onChange={(e) => setDraft({ ...draft, document: e.target.value })} placeholder="Opcional" /></Field><Field label="Início da atividade"><input type="date" value={draft.startDate} onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} /></Field></div><div className="logo-upload"><div className="logo-preview">{draft.logo ? <img src={draft.logo} alt="Logo do negócio" /> : <Mascot size="small" />}</div><div><strong>Logo do negócio</strong><p>PNG ou JPG para aparecer nos seus recibos.</p><input ref={fileRef} type="file" accept="image/png,image/jpeg" onChange={handleLogo} hidden /><Button variant="secondary" icon="upload" onClick={() => fileRef.current?.click()}>Importar imagem</Button>{draft.logo && <button className="text-button danger-text" onClick={() => setDraft({ ...draft, logo: '' })}>Remover logo</button>}</div></div><Button onClick={save} icon="check">Salvar dados do negócio</Button></div></div><div className="card signature-card"><div className="card-heading"><div><span className="section-kicker">Sua assinatura padrão</span><h2>Uma vez desenhada, sempre à mão</h2></div><span className="heading-icon yellow-bg"><Icon name="signature" /></span></div><p className="muted">Ela será carregada automaticamente ao criar um recibo. Você pode mudar a assinatura em um documento específico sem alterar esta versão.</p><SignaturePad label="Assinatura do prestador" value={draft.signature} onChange={(signature) => setDraft({ ...draft, signature })} /><Button onClick={save} icon="check">Salvar assinatura</Button></div></div><aside className="profile-side"><div className="card profile-card"><div className="profile-avatar">{draft.logo ? <img src={draft.logo} alt="Logo" /> : <span>{initials(draft.businessName || draft.ownerName)}</span>}</div><h2>{draft.businessName || 'Seu negócio'}</h2><p>{draft.ownerName || 'Complete seu perfil para personalizar os recibos.'}</p><div className="profile-stat"><span>Recibos finalizados</span><strong>{receipts.length}</strong></div></div><div className="card storage-card"><div className="card-heading"><div><span className="section-kicker">Armazenamento local</span><h2>Seus dados ficam aqui</h2></div><Icon name="lock" size={18} /></div><div className="storage-meter"><span style={{ width: `${Math.min(95, Math.max(5, used / 6000 * 100))}%` }} /></div><p>Este dispositivo está usando aproximadamente <strong>{Math.max(1, Math.round(used / 1024))} KB</strong> para o PJ OWL.</p><small>Ao limpar os dados do navegador, essas informações podem ser perdidas. Exporte recibos importantes antes de trocar de dispositivo.</small></div><div className="card storage-card"><div className="card-heading"><div><span className="section-kicker">Proteção dos seus dados</span><h2>Backup e restauração</h2></div><Icon name="download" size={18} /></div><p>Exporte uma cópia dos seus dados ou restaure um arquivo de backup do PJ OWL.</p><div className="stack-form"><Button variant="secondary" icon="download" onClick={onExportBackup}>Exportar backup</Button><input ref={backupRef} type="file" accept="application/json,.json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file && window.confirm('A restauração substituirá os dados atuais do PJ OWL. Deseja continuar?')) void onImportBackup(file); event.currentTarget.value = ''; }} /><Button variant="ghost" icon="upload" onClick={() => backupRef.current?.click()}>Restaurar backup</Button></div><small>A restauração substitui os dados atuais. Faça um backup antes de importar outro arquivo.</small></div><div className="card julio-profile"><Mascot size="small" mood="success" /><div><strong>Júlio cuida da leveza.</strong><p>Você cuida do trabalho. O PJ OWL ajuda a deixar tudo organizado.</p></div></div></aside></div></div>;
 }
 function ConfirmDialog({ title, text, onCancel, onConfirm }: { title: string; text: string; onCancel: () => void; onConfirm: () => void }) { return <div className="modal-backdrop"><div className="modal"><div className="modal-icon"><Icon name="trash" /></div><h2>{title}</h2><p>{text}</p><div className="modal-actions"><Button variant="ghost" onClick={onCancel}>Cancelar</Button><Button variant="danger" onClick={onConfirm}>Excluir</Button></div></div></div>; }
 
