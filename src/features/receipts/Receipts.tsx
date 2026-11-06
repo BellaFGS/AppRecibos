@@ -76,7 +76,7 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
             </div>
             {form.currency === 'USD' && <div className="exchange-rate-note" role="status">
               {rateLoading && <span>Consultando cotação do dólar...</span>}
-              {!rateLoading && exchangeRate && <><strong>Conversão estimada: {money(convertedAmount, 'BRL')}</strong><span>US$ 1,00 = {money(Math.round(exchangeRate.rate * 100), 'BRL')} · cotação de {formatExchangeRateDate(exchangeRate.quotedAt)}</span>{rateStale && <span className="warning-text">Sem conexão com a API. Usando a última cotação salva.</span>}</>}
+              {!rateLoading && exchangeRate && convertedAmount !== null && <><strong>Conversão estimada: {money(convertedAmount, 'BRL')}</strong><span>US$ 1,00 = {money(Math.round(exchangeRate.rate * 100), 'BRL')} · cotação de {formatExchangeRateDate(exchangeRate.quotedAt)}</span>{rateStale && <span className="warning-text">Sem conexão com a API. Usando a última cotação salva.</span>}</>}
               {rateError && !exchangeRate && <span className="warning-text">{rateError}</span>}
               <button type="button" onClick={() => { setForm((current) => ({ ...current })); setRateLoading(true); fetchUsdBrlRate().then(({ rate, stale }) => { setExchangeRate(rate); setRateStale(stale); setRateError(''); }).catch((error: unknown) => setRateError(error instanceof Error ? error.message : 'Falha ao atualizar cotação.')).finally(() => setRateLoading(false)); }}>Atualizar cotação</button>
             </div>}
