@@ -67,6 +67,11 @@ export interface Receipt {
   description: string;
   amount: number;
   currency: Currency;
+  /** Valor digitado originalmente, quando houve conversão cambial. */
+  originalCurrency?: Currency;
+  originalAmount?: number;
+  exchangeRate?: number;
+  exchangeRateDate?: string;
   paymentMethod: PaymentMethod;
   installment: string;
   notes: string;

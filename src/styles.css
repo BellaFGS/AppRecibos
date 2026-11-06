@@ -140,3 +140,11 @@ input, select, textarea { color: var(--ink); }
 .original-cost-detail { display: flex; justify-content: space-between; gap: 10px; color: #9a90a4; font-size: 10px; margin: -8px 0 17px; }
 .original-cost-detail strong { color: #7652ac; text-transform: capitalize; }
 @media (max-width: 780px) { .billing-tabs { overflow-x: auto; } .billing-tabs button { white-space: nowrap; } }
+
+/* Issue 06: valor por extenso e informação da conversão cambial. */
+.paper-amount-words { margin: 7px 0 0; color: #62596e; font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+.paper-conversion { margin: 5px 0 0; color: #8f8498; font-size: 9px; line-height: 1.4; }
+.exchange-rate-note { display: flex; flex-direction: column; gap: 5px; padding: 11px 13px; border: 1px solid #e8def2; border-radius: 12px; background: #faf7fd; color: #62596e; font-size: 12px; }
+.exchange-rate-note strong { color: #604293; }
+.exchange-rate-note button { align-self: flex-start; border: 0; padding: 3px 0; background: transparent; color: #7651ad; font-size: 11px; font-weight: 800; cursor: pointer; }
+.warning-text { color: #a66a24; }
