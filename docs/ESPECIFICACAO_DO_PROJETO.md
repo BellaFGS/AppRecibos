@@ -13,7 +13,7 @@ O PJ OWL é uma aplicação de apoio à gestão de pequenos negócios e atividad
 
 A aplicação possui identidade visual própria, interface responsiva e a mascote Júlio. O produto deve ser acolhedor e fácil de utilizar, sem abrir mão da precisão dos cálculos e da segurança dos registros financeiros.
 
-A versão atual é uma aplicação web construída com React, TypeScript e Vite. Os dados são armazenados no navegador por meio de localStorage. A direção definida para a evolução é preservar a interface web e empacotá-la para Android usando Capacitor, priorizando funcionamento offline. A migração integral da interface para Kotlin/Jetpack Compose não faz parte da estratégia atual.
+A versão atual é uma aplicação web construída com React, TypeScript e Vite. A interface foi organizada por domínio e a persistência foi isolada atrás de repositórios. Na web, o armazenamento utiliza IndexedDB; no Android, a camada prevê SQLite via Capacitor. A direção é preservar a interface e priorizar funcionamento offline. A migração integral para Kotlin/Jetpack Compose não faz parte da estratégia.
 
 ## 2. Problema e justificativa
 
@@ -52,7 +52,7 @@ Desenvolver e distribuir uma aplicação multiplataforma, offline-first, para au
 
 ### 5.1 Incluído na versão atual
 - Aplicação web responsiva e navegação entre seis módulos.
-- Persistência local com localStorage.
+- Persistência local isolada por repositórios, com IndexedDB na web e adaptador SQLite no Android.
 - Perfil do negócio, logotipo e assinatura padrão.
 - Calculadora de materiais e de cobranças por tempo.
 - Composições salvas.
@@ -78,7 +78,7 @@ Backend obrigatório ou sincronização em nuvem; contas e autenticação; emiss
 ## 6. Tecnologias e arquitetura
 
 ### 6.1 Implementação atual
-React, TypeScript, Vite, CSS, localStorage, Canvas para captura de assinaturas e APIs do navegador para impressão, compartilhamento, clipboard e arquivos, conforme disponibilidade.
+React, TypeScript, Vite, CSS, IndexedDB na web, SQLite via Capacitor no Android, Canvas para captura de assinaturas e APIs da plataforma para impressão, compartilhamento, clipboard e arquivos, conforme disponibilidade.
 
 ### 6.2 Estrutura observada
 - `src/main.tsx`: entrada React, componentes, estado, regras e telas.
@@ -87,7 +87,7 @@ React, TypeScript, Vite, CSS, localStorage, Canvas para captura de assinaturas e
 - `package.json`: dependências e scripts.
 - `README.md`, `TODO.md` e `plan.md`: documentação e planejamento.
 
-A implementação está concentrada principalmente em um arquivo de entrada. Uma refatoração gradual deverá separar componentes, domínios, serviços, persistência e testes.
+A aplicação foi modularizada por domínio. O estado compartilhado permanece coordenado em `app/App.tsx` para preservar os fluxos existentes, enquanto regras puras, componentes compartilhados, layout e persistência possuem módulos próprios.
 
 ### 6.3 Arquitetura alvo
 Interface React/TypeScript preservada; Capacitor como contêiner Android; camada de persistência isolada; banco local nativo ou solução local compatível com Capacitor, com migrações; adaptadores para notificações, compartilhamento e arquivos; testes independentes das APIs específicas da plataforma; Tauri como alternativa futura para desktop.
@@ -154,7 +154,7 @@ A situação “implementado” refere-se à inspeção da base atual e não sub
 | RF-021 | Pesquisar recibos por cliente e filtrar por período. | Implementado |
 | RF-022 | Exportar recibos para impressão/PDF e JPG. | Implementado |
 | RF-023 | Compartilhar informações do recibo usando recursos do dispositivo/navegador. | Parcial |
-| RF-024 | Persistir perfil, composições, agenda, despesas e recibos localmente. | Implementado via localStorage |
+| RF-024 | Persistir perfil, composições, agenda, despesas e recibos localmente. | Implementado por repositórios; IndexedDB na web e adaptador SQLite no Android |
 | RF-025 | Exibir confirmação antes de exclusões destrutivas. | Parcial |
 | RF-026 | Construir gráfico de movimentação a partir de dados reais agrupados no período selecionado. | Pendente |
 | RF-027 | Aplicar máscara e validação de CPF/CNPJ. | Pendente |
@@ -241,7 +241,7 @@ A situação “implementado” refere-se à inspeção da base atual e não sub
 
 | Risco | Impacto | Mitigação |
 |---|---|---|
-| Perda de dados em localStorage | Alto | Migrar para persistência nativa e oferecer backup/exportação. |
+| Perda de dados locais | Alto | Repositórios, migrações versionadas e backup validado; manter testes de restauração e exportação. |
 | Cálculos incorretos | Alto | Testes unitários, centavos inteiros e regras documentadas. |
 | Notificações não entregues | Médio/alto | Validar permissões, agendamento e restrições de bateria. |
 | Divergência navegador/Android | Médio | Adaptadores por plataforma e testes nos dois ambientes. |

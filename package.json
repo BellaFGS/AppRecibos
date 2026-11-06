@@ -1,24 +1,30 @@
 {
-  "name": "recibofacil",
+  "name": "pj-owl",
   "private": true,
-  "packageManager": "pnpm@11.25.0",
   "version": "1.0.0",
   "type": "module",
+  "packageManager": "pnpm@11.25.0",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build",
     "check": "tsc --noEmit",
-    "preview": "vite preview --host 0.0.0.0"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "pnpm check && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test:ci": "vitest run"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "@capacitor/core": "latest",
+    "@capacitor-community/sqlite": "latest"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0"
+    "@types/react-dom": "^19.3.0",
+    "vitest": "latest"
   }
 }
