@@ -14,6 +14,7 @@ describe('domain utilities', () => {
     expect(parseMoney('R$ 1.234,56')).toBe(123456);
     expect(parseMoney('25,90')).toBe(2590);
     expect(parseMoney('')).toBe(0);
+    expect(parseMoney('-15,00')).toBe(0);
     expect(money(123456, 'BRL')).toContain('1.234,56');
     expect(money(123456, 'USD')).toContain('1.234,56');
   });

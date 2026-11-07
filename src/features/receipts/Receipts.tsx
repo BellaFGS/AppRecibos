@@ -3,6 +3,7 @@ import type { BusinessProfile, Currency, PaymentMethod, Receipt, Section } from 
 import { amountToWords } from '../../domain/moneyWords';
 import { defaultReceiptForm, longDate, money, parseMoney, today } from '../../domain/utils';
 import { Button, Field, Mascot, SignaturePad } from '../../shared/components/ui';
+import { formatMoneyInput } from '../../shared/validation/numeric';
 import { PageTitle } from '../../shared/layout/AppLayout';
 import { convertUsdCentsToBrlCents, fetchUsdBrlRate, formatExchangeRateDate, getCachedExchangeRate, type ExchangeRate } from './exchangeRate';
 
@@ -70,7 +71,7 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
             </div>
             <Field label="Descrição do serviço ou produto"><input value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Ex.: 20 lembrancinhas personalizadas" /></Field>
             <div className="three-fields">
-              <Field label="Valor informado"><div className="money-input"><span>{form.currency === 'BRL' ? 'R$' : 'US$'}</span><input value={form.amount} onChange={(e) => update('amount', e.target.value)} placeholder="0,00" inputMode="decimal" /></div></Field>
+              <Field label="Valor informado"><div className="money-input"><span>{form.currency === 'BRL' ? 'R$' : 'US$'}</span><input value={form.amount} onChange={(e) => update('amount', formatMoneyInput(e.target.value))} placeholder="0,00" inputMode="decimal" /></div></Field>
               <Field label="Moeda de entrada"><select value={form.currency} onChange={(e) => update('currency', e.target.value as Currency)}><option value="BRL">Real (BRL)</option><option value="USD">Dólar (USD)</option></select></Field>
               <Field label="Data de pagamento"><input type="date" value={form.paymentDate} onChange={(e) => update('paymentDate', e.target.value)} /></Field>
             </div>

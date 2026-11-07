@@ -1,4 +1,5 @@
 import type { Appointment, BusinessProfile, Composition, CostItem, Currency, Expense, IconName, PaymentMethod, Receipt, Section, Unit } from './models';
+import { parseMoneyToCents } from '../shared/validation/numeric';
 
 export const uid = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -20,9 +21,7 @@ export const navItems: { id: Section; label: string; icon: IconName }[] = [
 ];
 
 export function parseMoney(value: string) {
-  const normalized = value.replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.');
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  return parseMoneyToCents(value);
 }
 
 export function money(cents: number, currency: Currency = 'BRL') {

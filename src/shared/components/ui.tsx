@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { IconName } from '../../domain/models';
+import { formatMoneyInput } from '../validation/numeric';
 
 export function Icon({ name, size = 19 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
@@ -53,6 +54,33 @@ export function Button({ children, variant = 'primary', icon, onClick, type = 'b
 
 export function Field({ label, children, hint, className = '' }: { label: string; children: React.ReactNode; hint?: string; className?: string }) {
   return <label className={`field ${className}`}><span className="field-label">{label}</span>{children}{hint && <span className="field-hint">{hint}</span>}</label>;
+}
+
+export function MoneyInput({
+  prefix = 'R$',
+  value,
+  onChange,
+  placeholder = '0,00',
+  onFocus,
+}: {
+  prefix?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  onFocus?: React.FocusEventHandler<HTMLInputElement>;
+}) {
+  return (
+    <div className="money-input">
+      <span>{prefix}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(formatMoneyInput(event.target.value))}
+        placeholder={placeholder}
+        inputMode="decimal"
+        onFocus={onFocus}
+      />
+    </div>
+  );
 }
 
 export function EmptyState({ title, text, action, onAction, mood = 'empty' }: { title: string; text: string; action?: string; onAction?: () => void; mood?: 'empty' | 'thinking' }) {
