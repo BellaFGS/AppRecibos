@@ -60,7 +60,7 @@ describe('buildDashboardSeries', () => {
     expect(result.expenses).toBe(5000);
   });
 
-  it('respeita os limites do mês', () => {
+  it('exibe os 12 meses do ano e agrupa movimentações por mês', () => {
     const result = buildDashboardSeries(
       [
         receipt('before', '2026-10-31', 9000),
@@ -75,15 +75,16 @@ describe('buildDashboardSeries', () => {
       now,
     );
 
-    expect(result.buckets).toHaveLength(30);
-    expect(result.startDate).toBe('2026-11-01');
-    expect(result.endDate).toBe('2026-11-30');
+    expect(result.buckets).toHaveLength(12);
+    expect(result.startDate).toBe('2026-01');
+    expect(result.endDate).toBe('2026-12');
+    expect(result.buckets[10]).toMatchObject({ revenue: 3000, expenses: 500 });
 
-    expect(result.revenue).toBe(3000);
+    expect(result.revenue).toBe(19000);
     expect(result.expenses).toBe(500);
   });
 
-  it('agrupa as movimentações por mês no ano selecionado', () => {
+  it('consolida as movimentações em um único total anual', () => {
     const result = buildDashboardSeries(
       [
         receipt('previous', '2025-12-31', 5000),
@@ -99,21 +100,14 @@ describe('buildDashboardSeries', () => {
       now,
     );
 
-    expect(result.buckets).toHaveLength(12);
-    expect(result.startDate).toBe('2026-01');
-    expect(result.endDate).toBe('2026-12');
+    expect(result.buckets).toHaveLength(1);
+    expect(result.startDate).toBe('2026');
+    expect(result.endDate).toBe('2026');
 
     expect(result.buckets[0]).toMatchObject({
-      revenue: 10000,
-      expenses: 3000,
+      revenue: 12500,
+      expenses: 4000,
     });
-
-    expect(result.buckets[10]).toMatchObject({
-      revenue: 2500,
-      expenses: 1000,
-    });
-
-    expect(result.buckets[1].revenue).toBe(0);
     expect(result.revenue).toBe(12500);
     expect(result.expenses).toBe(4000);
   });
@@ -140,7 +134,7 @@ describe('buildDashboardSeries', () => {
       now,
     );
 
-    expect(result.buckets).toHaveLength(30);
+    expect(result.buckets).toHaveLength(12);
 
     expect(
       result.buckets.every(
@@ -169,7 +163,7 @@ describe('buildDashboardSeries', () => {
     expect(result.revenue).toBe(0);
   });
 
-  it('considera 29 dias em fevereiro de ano bissexto', () => {
+  it('mantém os 12 meses mesmo em ano bissexto', () => {
     const result = buildDashboardSeries(
       [],
       [],
@@ -177,8 +171,8 @@ describe('buildDashboardSeries', () => {
       new Date(2024, 1, 15, 12),
     );
 
-    expect(result.buckets).toHaveLength(29);
-    expect(result.startDate).toBe('2024-02-01');
-    expect(result.endDate).toBe('2024-02-29');
+    expect(result.buckets).toHaveLength(12);
+    expect(result.startDate).toBe('2024-01');
+    expect(result.endDate).toBe('2024-12');
   });
 });

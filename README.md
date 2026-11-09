@@ -10,6 +10,7 @@ Aplicação web responsiva para organização de pequenos negócios, com foco em
 - pnpm
 - IndexedDB na web
 - SQLite no Android via Capacitor
+- Notificações locais no Android via `@capacitor/local-notifications` (8.3+)
 - Vitest para testes unitários
 - Git e GitHub para versionamento e colaboração
 
@@ -24,7 +25,8 @@ src/
 │   ├── utils.ts
 │   └── utils.test.ts
 ├── features/               # módulos organizados por domínio/tela
-│   ├── agenda/
+│   ├── agenda/              # compromissos e agendamento de notificações locais
+│   ├── expenses/            # cadastro e histórico de despesas
 │   ├── costs/
 │   ├── dashboard/
 │   ├── history/
@@ -79,7 +81,7 @@ pnpm build
 6. Evitar duplicação: extrair componentes e funções reutilizáveis quando houver comportamento compartilhado.
 7. Preferir funções pequenas, nomes explícitos e tipos específicos em vez de `any`.
 8. Toda regra de negócio nova deve ter testes unitários.
-9. Manter a identidade visual existente e validar manualmente os seis módulos após alterações de interface.
+9. Manter a identidade visual existente e validar manualmente os módulos após alterações de interface.
 
 ## Estratégia de testes
 
@@ -102,3 +104,19 @@ Autônomos, MEIs, artesãos, prestadores de serviços e pequenos empreendedores 
 ## Licença
 
 Definir a licença antes de publicar o repositório como software de código aberto.
+
+
+## Agenda, lembretes e despesas
+
+- Cada compromisso pode receber lembretes configuráveis de 7, 3 e/ou 1 dia antes.
+- No Android, a permissão de notificação é solicitada somente quando o usuário salva um compromisso com pelo menos um lembrete selecionado.
+- Ao editar um compromisso, os alertas anteriores são cancelados e os novos horários são programados. Ao excluir, os três identificadores possíveis daquele compromisso são cancelados.
+- Os lembretes são notificações locais, não dependem de conexão com a internet. A versão web informa que o agendamento em segundo plano está disponível no aplicativo Android.
+- Despesas possuem uma seção própria na navegação e continuam persistidas no mesmo repositório local, preservando os dados existentes.
+- O roteiro de validação Android está em [`docs/QA_ANDROID_NOTIFICATIONS.md`](docs/QA_ANDROID_NOTIFICATIONS.md).
+
+## Aplicativo Android (Capacitor)
+
+A interface React é empacotada localmente pelo Capacitor. Para criar a plataforma Android pela primeira vez, execute `pnpm cap:add:android`; para atualizar os arquivos web e plugins nativos, use `pnpm build` e `pnpm cap:sync`. O guia completo de ambiente, ícones, splash screen, instalação e geração do APK está em [`docs/ANDROID.md`](docs/ANDROID.md).
+
+O workflow do GitHub Actions valida TypeScript, testes e build web em pushes e pull requests para `main` e `develop`. Após a validação, cria o projeto Android no runner, sincroniza o Capacitor, compila o APK de debug e publica o arquivo como artifact da execução. Nenhuma chave de assinatura ou segredo é necessário para o APK de debug.

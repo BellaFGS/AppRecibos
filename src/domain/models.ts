@@ -1,4 +1,4 @@
-export type Section = 'dashboard' | 'costs' | 'agenda' | 'receipt' | 'history' | 'profile';
+export type Section = 'dashboard' | 'costs' | 'agenda' | 'expenses' | 'receipt' | 'history' | 'profile';
 
 export type Currency = 'BRL' | 'USD';
 
@@ -61,7 +61,10 @@ export interface Appointment {
   time: string;
   description: string;
   address: string;
-  reminder: string;
+  /** Dias antes do compromisso em que o usuário deseja receber alertas. */
+  reminderDays?: number[];
+  /** Campo legado preservado para compatibilidade com backups antigos. */
+  reminder?: string;
 }
 
 export interface Expense {

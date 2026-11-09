@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">PJ OWL</string>
+    <string name="title_activity_main">PJ OWL</string>
+    <string name="package_name">com.pjowl.recibos</string>
+    <string name="custom_url_scheme">com.pjowl.recibos</string>
+</resources>

@@ -15,6 +15,7 @@ export const navItems: { id: Section; label: string; icon: IconName }[] = [
   { id: 'dashboard', label: 'Início', icon: 'home' },
   { id: 'costs', label: 'Custos', icon: 'calculator' },
   { id: 'agenda', label: 'Agenda', icon: 'calendar' },
+  { id: 'expenses', label: 'Despesas', icon: 'wallet' },
   { id: 'receipt', label: 'Novo recibo', icon: 'receipt' },
   { id: 'history', label: 'Histórico', icon: 'history' },
   { id: 'profile', label: 'Perfil', icon: 'user' },

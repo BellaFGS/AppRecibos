@@ -2,12 +2,19 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
-    branches: [main]
+    branches: [main, develop]
+
+permissions:
+  contents: read
 
 jobs:
-  validate:
+  validate-web:
+    name: Typecheck, tests and web build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,10 +29,66 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
       - name: Type check
         run: pnpm check
       - name: Unit and integration tests
         run: pnpm test:ci
       - name: Production build
         run: pnpm build
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: pj-owl-web-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  android-debug:
+    name: Android debug APK
+    runs-on: ubuntu-latest
+    needs: validate-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Build web assets
+        run: pnpm build
+      - name: Create Android project if needed
+        run: |
+          if [ ! -d android ]; then
+            pnpm exec cap add android
+          fi
+      - name: Configure Android minimum SDK
+        run: pnpm cap:configure:android
+      - name: Generate Android icon and splash resources
+        run: pnpm dlx @capacitor/assets@4.0.0 generate --android
+      - name: Sync Capacitor plugins and web assets
+        run: pnpm exec cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: pj-owl-android-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

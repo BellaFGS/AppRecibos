@@ -11,11 +11,22 @@
     "test:watch": "vitest",
     "build": "pnpm check && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test:ci": "vitest run"
+    "test:ci": "vitest run",
+    "cap:add:android": "cap add android",
+    "cap:sync": "cap sync android",
+    "cap:open:android": "cap open android",
+    "android:debug": "cd android && gradlew.bat assembleDebug",
+    "cap:configure:android": "node scripts/configure-android.mjs"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "latest",
-    "@capacitor/core": "latest",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2",
     "@radix-ui/react-dialog": "^1.3.1",
     "@vitejs/plugin-react": "latest",
     "react": "latest",
@@ -24,6 +35,8 @@
     "vite": "latest"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "vitest": "latest"

@@ -67,13 +67,8 @@ export function Dashboard({
     ? profile.ownerName.split(' ')[0]
     : 'por aqui';
 
-  // Permite visualizar todos os dias do mês sem comprimir as barras.
-  const chartWidth =
-    buckets.length > 12
-      ? '620px'
-      : buckets.length > 7
-        ? '420px'
-        : '100%';
+  // Mantém os rótulos dos 12 meses legíveis em telas estreitas.
+  const chartWidth = period === 'month' ? '480px' : '100%';
 
   // A altura de cada barra é proporcional ao maior valor do período.
   const barHeight = (value: number): string => {
@@ -115,7 +110,7 @@ export function Dashboard({
             {value === 'week'
               ? '7 dias'
               : value === 'month'
-                ? 'Este mês'
+                ? 'Por mês'
                 : 'Este ano'}
           </button>
         ))}
