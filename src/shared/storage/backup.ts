@@ -14,6 +14,7 @@ const DATA_KEYS: StorageKey[] = [
   'appointments',
   'expenses',
   'receipts',
+  'calculations',
 ];
 
 const DEFAULT_PROFILE = {
@@ -75,6 +76,7 @@ export function validateBackup(input: unknown): BackupDocument {
     appointments: validateCollection(data.appointments, 'agenda'),
     expenses: validateCollection(data.expenses, 'despesas'),
     receipts: validateCollection(data.receipts, 'recibos'),
+    calculations: validateCollection(data.calculations ?? [], 'cálculos'),
   };
 
   if (
@@ -111,7 +113,7 @@ export async function createBackup(
     compositionsValue,
     appointmentsValue,
     expensesValue,
-    receiptsValue,
+    receiptsValue, calculationsValue,
   ] = await Promise.all(
     DATA_KEYS.map((key) => storage.get(key)),
   );
@@ -142,6 +144,7 @@ export async function createBackup(
       receiptsValue ?? [],
       'recibos',
     ),
+    calculations: validateCollection(calculationsValue ?? [], 'cálculos'),
   };
 
   return {

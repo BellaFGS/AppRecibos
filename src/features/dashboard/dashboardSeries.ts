@@ -75,8 +75,8 @@ function weekdayLabel(date: Date): string {
 
 /**
  * Semana: últimos 7 dias, incluindo hoje.
- * Mês: todos os dias do mês atual.
- * Ano: janeiro até dezembro do ano atual.
+ * Mês: os 12 meses do ano atual.
+ * Ano: um único total consolidado do ano atual.
  *
  * Valores monetários são armazenados em centavos.
  */
@@ -88,10 +88,9 @@ export function buildDashboardSeries(
 ): DashboardSeries {
   const year = now.getFullYear();
   const month = now.getMonth();
-
   const buckets: DashboardBucket[] = [];
 
-  if (period === 'year') {
+  if (period === 'month') {
     for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
       buckets.push({
         key: monthKey(year, monthIndex + 1),
@@ -100,32 +99,18 @@ export function buildDashboardSeries(
         expenses: 0,
       });
     }
-  } else if (period === 'month') {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      buckets.push({
-        key: dateKey(year, month + 1, day),
-        label: String(day),
-        revenue: 0,
-        expenses: 0,
-      });
-    }
+  } else if (period === 'year') {
+    buckets.push({
+      key: String(year),
+      label: String(year),
+      revenue: 0,
+      expenses: 0,
+    });
   } else {
     for (let offset = 6; offset >= 0; offset--) {
-      const date = new Date(
-        year,
-        month,
-        now.getDate() - offset,
-        12,
-      );
-
+      const date = new Date(year, month, now.getDate() - offset, 12);
       buckets.push({
-        key: dateKey(
-          date.getFullYear(),
-          date.getMonth() + 1,
-          date.getDate(),
-        ),
+        key: dateKey(date.getFullYear(), date.getMonth() + 1, date.getDate()),
         label: weekdayLabel(date),
         revenue: 0,
         expenses: 0,
@@ -137,7 +122,8 @@ export function buildDashboardSeries(
     buckets.map((bucket) => [bucket.key, bucket]),
   );
 
-  const groupByMonth = period === 'year';
+  const groupByMonth = period === 'month';
+  const groupByYear = period === 'year';
 
   // Entradas: somente recibos finalizados.
   for (const receipt of receipts) {
@@ -147,9 +133,11 @@ export function buildDashboardSeries(
 
     if (!parsed) continue;
 
-    const key = groupByMonth
-      ? monthKey(parsed.year, parsed.month)
-      : dateKey(parsed.year, parsed.month, parsed.day);
+    const key = groupByYear
+      ? String(parsed.year)
+      : groupByMonth
+        ? monthKey(parsed.year, parsed.month)
+        : dateKey(parsed.year, parsed.month, parsed.day);
 
     const bucket = bucketMap.get(key);
 
@@ -164,9 +152,11 @@ export function buildDashboardSeries(
 
     if (!parsed) continue;
 
-    const key = groupByMonth
-      ? monthKey(parsed.year, parsed.month)
-      : dateKey(parsed.year, parsed.month, parsed.day);
+    const key = groupByYear
+      ? String(parsed.year)
+      : groupByMonth
+        ? monthKey(parsed.year, parsed.month)
+        : dateKey(parsed.year, parsed.month, parsed.day);
 
     const bucket = bucketMap.get(key);
 

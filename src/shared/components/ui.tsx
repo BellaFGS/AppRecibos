@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { IconName } from '../../domain/models';
+import { formatMoneyInput } from '../validation/numeric';
 
 export function Icon({ name, size = 19 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
@@ -55,6 +56,33 @@ export function Field({ label, children, hint, className = '' }: { label: string
   return <label className={`field ${className}`}><span className="field-label">{label}</span>{children}{hint && <span className="field-hint">{hint}</span>}</label>;
 }
 
+export function MoneyInput({
+  prefix = 'R$',
+  value,
+  onChange,
+  placeholder = '0,00',
+  onFocus,
+}: {
+  prefix?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  onFocus?: React.FocusEventHandler<HTMLInputElement>;
+}) {
+  return (
+    <div className="money-input">
+      <span>{prefix}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(formatMoneyInput(event.target.value))}
+        placeholder={placeholder}
+        inputMode="decimal"
+        onFocus={onFocus}
+      />
+    </div>
+  );
+}
+
 export function EmptyState({ title, text, action, onAction, mood = 'empty' }: { title: string; text: string; action?: string; onAction?: () => void; mood?: 'empty' | 'thinking' }) {
   return <div className="empty-state"><Mascot size="normal" mood={mood} /><div><h3>{title}</h3><p>{text}</p>{action && <Button variant="soft" icon="plus" onClick={onAction}>{action}</Button>}</div></div>;
 }
@@ -82,5 +110,5 @@ export function SignaturePad({ label, value, onChange }: { label: string; value:
   return <div className="signature-field"><div className="signature-label"><span>{label}</span><button type="button" onClick={clear}>Limpar</button></div><canvas ref={canvasRef} width={640} height={190} onPointerDown={start} onPointerMove={draw} onPointerUp={stop} onPointerLeave={stop} /><p>Desenhe com o dedo ou mouse dentro da área.</p></div>;
 }
 
-export function ConfirmDialog({ title, text, onCancel, onConfirm }: { title: string; text: string; onCancel: () => void; onConfirm: () => void }) { return <div className="modal-backdrop"><div className="modal"><div className="modal-icon"><Icon name="trash" /></div><h2>{title}</h2><p>{text}</p><div className="modal-actions"><Button variant="ghost" onClick={onCancel}>Cancelar</Button><Button variant="danger" onClick={onConfirm}>Excluir</Button></div></div></div>; }
+export function ConfirmDialog({ title, text, onCancel, onConfirm, confirmLabel = 'Excluir', confirmDisabled = false }: { title: string; text: string; onCancel: () => void; onConfirm: () => void; confirmLabel?: string; confirmDisabled?: boolean }) { return <div className="modal-backdrop"   ><div className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title"><div className="modal-icon"><Icon name="trash" /></div><h2 id="confirm-dialog-title">{title}</h2><p>{text}</p><div className="modal-actions"><Button variant="ghost" onClick={onCancel} disabled={confirmDisabled}>Cancelar</Button><Button variant="danger" onClick={onConfirm} disabled={confirmDisabled}>{confirmLabel}</Button></div></div></div>; }
 

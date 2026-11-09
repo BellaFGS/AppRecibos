@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe('migrações de armazenamento', () => {
-  it('importa os cinco domínios legados sem apagar a origem', async () => {
+  it('importa os domínios legados sem apagar a origem', async () => {
     const legacy: Record<string, string> = {
       'recibofacil:profile': JSON.stringify({ ownerName: 'Bella' }),
       'recibofacil:compositions': JSON.stringify([{ id: 'c1' }]),
