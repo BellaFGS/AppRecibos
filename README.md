@@ -58,6 +58,18 @@ pnpm install
 pnpm dev
 ```
 
+## Android (Capacitor)
+
+Requisitos: JDK 17+ e Android SDK (ou Android Studio).
+
+```bash
+pnpm install
+pnpm android:apk
+cd android && ./gradlew assembleDebug   # Windows: gradlew.bat assembleDebug
+```
+
+O CI publica o APK de debug como artifact quando `android/` está no repositório.
+
 ## Validação
 
 Execute os comandos na raiz do repositório:

@@ -253,8 +253,8 @@ A situação “implementado” refere-se à inspeção da base atual e não sub
 1. Fundação e qualidade: modularização, testes e revisão de regras financeiras.
 2. Correções web: gráfico real, máscaras, valor por extenso, histórico de cálculos e alertas.
 3. Persistência: camada de repositório, migração, backup e restauração.
-4. Android: Capacitor, armazenamento local, notificações, arquivos e compartilhamento.
-5. CI/CD: GitHub Actions para typecheck, testes e build web (**ativo**); APK de debug quando `android/` existir (issue #13).
+4. Android: projeto Capacitor inicial (**configurado**); pendente validação em dispositivo, notificações, arquivos e compartilhamento.
+5. CI/CD: GitHub Actions com typecheck, testes, build web e **APK de debug** como artifact.
 6. Distribuição: releases versionadas e documentação de instalação.
 7. Desktop: avaliar Tauri após estabilização Android.
 

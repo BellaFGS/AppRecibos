@@ -57,9 +57,11 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Production build
         run: pnpm build
+      - name: Sync Capacitor Android
+        run: pnpm exec cap sync android
       - name: Assemble debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: chmod +x gradlew && ./gradlew assembleDebug
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
