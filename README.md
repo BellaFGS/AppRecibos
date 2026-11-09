@@ -2,6 +2,12 @@
 
 Aplicação web responsiva para organização de pequenos negócios, com foco em recibos, custos, agenda e histórico. O projeto mantém a interface React/TypeScript existente e prepara a base para distribuição web e empacotamento Android com Capacitor.
 
+## Documentação
+
+- **Especificação:** [`docs/ESPECIFICACAO_DO_PROJETO.md`](docs/ESPECIFICACAO_DO_PROJETO.md) (requisitos, regras, roadmap).
+- **Índice:** [`docs/README.md`](docs/README.md).
+- **Implementado vs planejado:** tabela na [seção 8 da especificação](docs/ESPECIFICACAO_DO_PROJETO.md#8-requisitos-funcionais).
+
 ## Tecnologias
 
 - React + TypeScript

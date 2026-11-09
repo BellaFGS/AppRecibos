@@ -254,7 +254,7 @@ A situação “implementado” refere-se à inspeção da base atual e não sub
 2. Correções web: gráfico real, máscaras, valor por extenso, histórico de cálculos e alertas.
 3. Persistência: camada de repositório, migração, backup e restauração.
 4. Android: Capacitor, armazenamento local, notificações, arquivos e compartilhamento.
-5. CI/CD: GitHub Actions para typecheck, testes, build web e APK.
+5. CI/CD: GitHub Actions para typecheck, testes e build web (**ativo**); APK de debug quando `android/` existir (issue #13).
 6. Distribuição: releases versionadas e documentação de instalação.
 7. Desktop: avaliar Tauri após estabilização Android.
 
