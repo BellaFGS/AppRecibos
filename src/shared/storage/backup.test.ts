@@ -20,6 +20,7 @@ const sampleData = {
   appointments: [{ id: 'a1', description: 'Entrega' }],
   expenses: [{ id: 'e1', description: 'Material' }],
   receipts: [{ id: 'r1', clientName: 'Cliente' }],
+  calculations: [{ id: 'calc1', description: 'Produto teste' }],
 };
 
 describe('backup PJ OWL', () => {
@@ -35,7 +36,7 @@ describe('backup PJ OWL', () => {
     expect(await storage.get('receipts')).toEqual([{ id: 'original' }]);
   });
 
-  it('exporta e restaura os cinco domínios', async () => {
+  it('exporta e restaura os domínios persistidos', async () => {
     const storage = new MemoryStorage();
     for (const [key, value] of Object.entries(sampleData)) await storage.set(key, value);
     const backup = await createBackup(storage);
@@ -47,7 +48,7 @@ describe('backup PJ OWL', () => {
 
   it('tenta reverter os dados anteriores se uma gravação falhar', async () => {
     const storage = new MemoryStorage();
-    for (const key of ['profile', 'compositions', 'appointments', 'expenses', 'receipts']) await storage.set(key, key === 'profile' ? sampleData.profile : []);
+    for (const key of ['profile', 'compositions', 'appointments', 'expenses', 'receipts', 'calculations']) await storage.set(key, key === 'profile' ? sampleData.profile : []);
     const backup = { format: 'pj-owl-backup', backupVersion: 1, schemaVersion: 1, createdAt: new Date().toISOString(), data: sampleData };
     storage.failOnKey = 'expenses';
     await expect(restoreBackup(storage, backup)).rejects.toThrow('dados anteriores foram preservados');

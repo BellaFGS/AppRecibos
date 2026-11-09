@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { Appointment, BusinessProfile, Composition, Expense, Receipt, Section } from '../domain/models';
+import type { Appointment, BusinessProfile, CalculationRecord, Composition, Expense, Receipt, Section } from '../domain/models';
 import { defaultProfile } from '../domain/utils';
 import { initializeStorage } from '../shared/storage/storageProvider';
 import { createRepositories, loadAllRepositories, type AppRepositories } from '../shared/storage/repositories';
@@ -18,6 +18,7 @@ export function App() {
   const [active, setActive] = useState<Section>('dashboard');
   const [profile, setProfileState] = useState<BusinessProfile>(defaultProfile);
   const [compositions, setCompositionsState] = useState<Composition[]>([]);
+  const [calculations, setCalculationsState] = useState<CalculationRecord[]>([]);
   const [appointments, setAppointmentsState] = useState<Appointment[]>([]);
   const [expenses, setExpensesState] = useState<Expense[]>([]);
   const [receipts, setReceiptsState] = useState<Receipt[]>([]);
@@ -42,6 +43,7 @@ export function App() {
       repositoriesRef.current = repositories;
       setProfileState(data.profile as BusinessProfile);
       setCompositionsState(data.compositions as Composition[]);
+      setCalculationsState((data.calculations || []) as CalculationRecord[]);
       setAppointmentsState(data.appointments as Appointment[]);
       setExpensesState(data.expenses as Expense[]);
       setReceiptsState(data.receipts as Receipt[]);
@@ -56,6 +58,7 @@ export function App() {
 
   const setProfile: React.Dispatch<React.SetStateAction<BusinessProfile>> = setProfileState;
   const setCompositions: React.Dispatch<React.SetStateAction<Composition[]>> = setCompositionsState;
+  const setCalculations: React.Dispatch<React.SetStateAction<CalculationRecord[]>> = setCalculationsState;
   const setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>> = setAppointmentsState;
   const setExpenses: React.Dispatch<React.SetStateAction<Expense[]>> = setExpensesState;
   const setReceipts: React.Dispatch<React.SetStateAction<Receipt[]>> = setReceiptsState;
@@ -64,13 +67,13 @@ export function App() {
     if (!storageReady || !repositoriesRef.current) return;
     const repositories = repositoriesRef.current;
     void Promise.all([
-      repositories.profile.save(profile), repositories.compositions.save(compositions),
+      repositories.profile.save(profile), repositories.compositions.save(compositions), repositories.calculations.save(calculations),
       repositories.appointments.save(appointments), repositories.expenses.save(expenses),
       repositories.receipts.save(receipts),
     ]).then(async () => {
       if (storageRef.current) setStorageUsage(await getStorageUsageBytes(storageRef.current));
     }).catch(() => notify('Não foi possível gravar os dados. Verifique o espaço disponível e tente novamente.'));
-  }, [profile, compositions, appointments, expenses, receipts, storageReady]);
+  }, [profile, compositions, calculations, appointments, expenses, receipts, storageReady]);
 
   const exportBackup = async () => {
     try {
@@ -88,6 +91,7 @@ export function App() {
       const data = await loadAllRepositories(repositoriesRef.current!);
       setProfileState(data.profile as BusinessProfile);
       setCompositionsState(data.compositions as Composition[]);
+      setCalculationsState((data.calculations || []) as CalculationRecord[]);
       setAppointmentsState(data.appointments as Appointment[]);
       setExpensesState(data.expenses as Expense[]);
       setReceiptsState(data.receipts as Receipt[]);
@@ -113,7 +117,7 @@ export function App() {
     <main className="main-content">
       <MobileHeader active={active} navigate={navigate} />
       {active === 'dashboard' && <Dashboard profile={profile} receipts={finalizedReceipts} expenses={expenses} appointments={appointments} navigate={navigate} />}
-      {active === 'costs' && <Costs compositions={compositions} setCompositions={setCompositions} notify={notify} />}
+      {active === 'costs' && <Costs calculations={calculations} setCalculations={setCalculations} notify={notify} />}
       {active === 'agenda' && <Agenda appointments={appointments} setAppointments={setAppointments} expenses={expenses} setExpenses={setExpenses} setDeleteTarget={setDeleteTarget} notify={notify} />}
       {active === 'receipt' && <ReceiptCreator profile={profile} setReceipts={setReceipts} navigate={navigate} notify={notify} />}
       {active === 'history' && <History receipts={finalizedReceipts} setDeleteTarget={setDeleteTarget} notify={notify} />}

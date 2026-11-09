@@ -14,13 +14,14 @@
     "test:ci": "vitest run"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "latest",
+    "@capacitor/core": "latest",
+    "@radix-ui/react-dialog": "^1.3.1",
     "@vitejs/plugin-react": "latest",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest",
-    "vite": "latest",
-    "@capacitor/core": "latest",
-    "@capacitor-community/sqlite": "latest"
+    "vite": "latest"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

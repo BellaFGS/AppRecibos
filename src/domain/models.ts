@@ -5,6 +5,20 @@ export type Currency = 'BRL' | 'USD';
 export type Unit = 'mm' | 'cm' | 'm' | 'g' | 'kg' | 'ml' | 'L' | 'un';
 
 export type PricingMode = 'markup' | 'margin';
+export type ResourceKind = 'material' | 'fixed' | 'hourly' | 'daily' | 'monthly' | 'weekly' | 'annual' | 'request' | 'project';
+export type CalculatorUnit = Unit | 'hora' | 'diaria' | 'mensal' | 'semanal' | 'anual' | 'requisição' | 'projeto';
+
+export interface CalculatorResource {
+  id: string; name: string; kind: ResourceKind; quantity: number; unit: CalculatorUnit;
+  referenceQuantity: number; referenceUnit: CalculatorUnit; unitPrice: number; currency: Currency;
+  exchangeRate?: number; exchangeRateDate?: string; packageQuantity?: number; packageUnit?: Unit;
+}
+export interface CalculationRecord {
+  id: string; createdAt: string; description: string; resources: CalculatorResource[];
+  costCents: number; pricingMode: PricingMode; percentage: number; suggestedPriceCents: number;
+  finalPriceCents: number; profitCents: number; actualMargin: number;
+}
+
 
 export type PaymentMethod = 'Dinheiro' | 'Pix' | 'Cartão de crédito' | 'Cartão de débito' | 'Transferência bancária' | 'Outro';
 
@@ -37,6 +51,8 @@ export interface Composition {
   timeUnit?: string;
   timeQuantity?: number;
   timePrice?: number;
+  resources?: CalculatorResource[];
+  pricingMode?: PricingMode; percentage?: number; manualPriceCents?: number;
 }
 
 export interface Appointment {

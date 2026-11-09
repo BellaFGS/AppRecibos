@@ -1,4 +1,4 @@
-export type StorageKey = 'profile' | 'compositions' | 'appointments' | 'expenses' | 'receipts';
+export type StorageKey = 'profile' | 'compositions' | 'appointments' | 'expenses' | 'receipts' | 'calculations';
 
 export interface KeyValueStorage {
   get<T>(key: string): Promise<T | null>;
@@ -18,6 +18,7 @@ export interface BackupData {
   appointments: unknown[];
   expenses: unknown[];
   receipts: unknown[];
+  calculations: unknown[];
 }
 
 export interface BackupDocument {

@@ -2,7 +2,7 @@ import type { KeyValueStorage, StorageKey } from './types';
 
 export const CURRENT_SCHEMA_VERSION = 1;
 const LEGACY_PREFIX = 'recibofacil:';
-const DATA_KEYS: StorageKey[] = ['profile', 'compositions', 'appointments', 'expenses', 'receipts'];
+const DATA_KEYS: StorageKey[] = ['profile', 'compositions', 'appointments', 'expenses', 'receipts', 'calculations'];
 
 /** Migração idempotente: não remove nem altera as chaves antigas do navegador. */
 export async function runMigrations(storage: KeyValueStorage): Promise<void> {
