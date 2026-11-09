@@ -105,6 +105,10 @@ jobs:
       - name: Sync Capacitor plugins and web assets
         run: pnpm exec cap sync android
 
+      - name: Grant execute permission for Gradle
+        working-directory: android
+        run: chmod +x gradlew
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug
