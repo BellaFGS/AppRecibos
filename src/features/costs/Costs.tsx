@@ -16,6 +16,7 @@ import {
   formatMoneyInput,
   parseMoneyToCents,
   parseDecimalInput,
+  sanitizeDecimalInput,
 } from '../../shared/validation/numeric';
 import { PageTitle } from '../../shared/layout/AppLayout';
 import {
@@ -244,7 +245,7 @@ export function Costs({
     setResourceName(item.name);
     setCategory(categoryForKind(item.kind));
     setKind(item.kind);
-    setQuantity(String(item.quantity));
+    setQuantity(item.quantity.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }));
     setUnit((item.unit as Unit) || 'un');
     if (item.kind === 'material') {
       setMaterialSubcategory(materialSubcategoryForUnit(item.unit as Unit));
@@ -426,17 +427,15 @@ export function Costs({
               )}
 
               <Field
-                label={kind === 'hourly' ? 'Horas de trabalho' : 'Valor da Unidade'}
+                label={kind === 'hourly' ? 'Horas de trabalho' : 'Quantidade utilizada'}
                 
               >
                 <input
-                  type={kind === 'hourly' ? 'number' : 'text'}
-                  min={kind === 'hourly' ? '0' : undefined}
-                  step={kind === 'hourly' ? 'any' : undefined}
+                  type="text"
                   value={quantity}
-                  onChange={(event) => setQuantity(event.target.value)}
+                  onChange={(event) => setQuantity(sanitizeDecimalInput(event.target.value, 3))}
                   inputMode="decimal"
-                  placeholder="1"
+                  placeholder="0,00"
                 />
               </Field>
 
@@ -493,8 +492,8 @@ export function Costs({
                         <strong>{item.name}</strong>
                         <span>
                           {item.kind === 'material'
-                            ? `${materialSubcategories.find((option) => option.units.includes(item.unit as Unit))?.label ?? 'Material'} · ${item.quantity} ${item.unit}`
-                            : `${kindLabels[item.kind]} · ${item.quantity} ${item.unit}`}
+                            ? `${materialSubcategories.find((option) => option.units.includes(item.unit as Unit))?.label ?? 'Material'} · ${item.quantity.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} ${item.unit}`
+                            : `${kindLabels[item.kind]} · ${item.quantity.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} ${item.unit}`}
                           {' · '}{currencyLabel(item)} {money(item.unitPrice, item.currency)}
                         </span>
                         <small>
@@ -698,7 +697,7 @@ export function Costs({
                 <article className="calculation-detail-item" key={`${item.id}-${index}`}>
                   <div className="calculation-detail-item-main">
                     <strong>{item.name}</strong>
-                    <span>{kindLabels[item.kind]} · {item.quantity} {item.unit}</span>
+                    <span>{kindLabels[item.kind]} · {item.quantity.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} {item.unit}</span>
                     <small>
                       {item.kind === 'material'
                         ? `${materialSubcategories.find((option) => option.units.includes(item.unit as Unit))?.label ?? 'Material'} · preço por ${item.unit}: ${money(item.unitPrice, item.currency)}`

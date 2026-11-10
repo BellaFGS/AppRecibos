@@ -1,10 +1,10 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import type { Appointment } from '../../domain/models';
-import { appointmentNotificationIds, getAppointmentReminderDays, notificationId, reminderDate } from './reminderSchedule';
+import { appointmentNotificationIds, getAppointmentReminderDays, getAppointmentReminderMinutes, notificationId, reminderDate, reminderDateByMinutes } from './reminderSchedule';
 
-export { appointmentNotificationIds, getAppointmentReminderDays, notificationId, reminderDate, REMINDER_DAYS } from './reminderSchedule';
-export type { ReminderDay } from './reminderSchedule';
+export { appointmentNotificationIds, getAppointmentReminderDays, getAppointmentReminderMinutes, notificationId, reminderDate, reminderDateByMinutes, REMINDER_DAYS, REMINDER_MINUTES } from './reminderSchedule';
+export type { ReminderDay, ReminderMinutes } from './reminderSchedule';
 
 export type ReminderResult = 'scheduled' | 'permission-denied' | 'unsupported' | 'none';
 
@@ -39,7 +39,8 @@ export async function scheduleAppointmentNotifications(
   requestPermission = true,
 ): Promise<ReminderResult> {
   const selectedDays = getAppointmentReminderDays(appointment);
-  if (!selectedDays.length) return 'none';
+  const selectedMinutes = getAppointmentReminderMinutes(appointment);
+  if (!selectedDays.length && !selectedMinutes.length) return 'none';
   if (!Capacitor.isNativePlatform()) return 'unsupported';
 
   const granted = await ensurePermission(requestPermission);
@@ -49,8 +50,8 @@ export async function scheduleAppointmentNotifications(
   await cancelAppointmentNotifications(appointment.id);
 
   const now = Date.now();
-  const notifications = selectedDays
-    .map((daysBefore) => ({
+  const notifications = [
+    ...selectedDays.map((daysBefore) => ({
       id: notificationId(appointment.id, daysBefore),
       title: daysBefore === 1 ? 'Compromisso amanhã' : `Compromisso em ${daysBefore} dias`,
       body: appointment.address
@@ -60,8 +61,15 @@ export async function scheduleAppointmentNotifications(
       isExactNotification: true,
       channelId: 'pjowl-appointments',
       extra: { appointmentId: appointment.id, daysBefore },
-    }))
-    .filter((notification) => notification.schedule.at.getTime() > now);
+    })),
+    ...selectedMinutes.map((minutesBefore) => ({
+      id: notificationId(appointment.id, minutesBefore, 'minutes'),
+      title: minutesBefore === 60 ? 'Compromisso em 1 hora' : `Compromisso em ${minutesBefore / 60} horas`,
+      body: appointment.address ? `${appointment.description} · ${appointment.address}` : appointment.description,
+      schedule: { at: reminderDateByMinutes(appointment, minutesBefore), allowWhileIdle: true },
+      isExactNotification: true, channelId: 'pjowl-appointments', extra: { appointmentId: appointment.id, minutesBefore },
+    })),
+  ].filter((notification) => notification.schedule.at.getTime() > now);
 
   if (notifications.length) await LocalNotifications.schedule({ notifications });
   return 'scheduled';
@@ -76,9 +84,10 @@ export async function synchronizeAppointmentNotifications(appointments: Appointm
   await Promise.all(appointments.map(async (appointment) => {
     await cancelAppointmentNotifications(appointment.id);
     const days = getAppointmentReminderDays(appointment);
-    if (!days.length) return;
-    const notifications = days
-      .map((daysBefore) => ({
+    const minutes = getAppointmentReminderMinutes(appointment);
+    if (!days.length && !minutes.length) return;
+    const notifications = [
+      ...days.map((daysBefore) => ({
         id: notificationId(appointment.id, daysBefore),
         title: daysBefore === 1 ? 'Compromisso amanhã' : `Compromisso em ${daysBefore} dias`,
         body: appointment.address ? `${appointment.description} · ${appointment.address}` : appointment.description,
@@ -86,8 +95,15 @@ export async function synchronizeAppointmentNotifications(appointments: Appointm
         isExactNotification: true,
         channelId: 'pjowl-appointments',
         extra: { appointmentId: appointment.id, daysBefore },
-      }))
-      .filter((notification) => notification.schedule.at.getTime() > Date.now());
+      })),
+      ...minutes.map((minutesBefore) => ({
+        id: notificationId(appointment.id, minutesBefore, 'minutes'),
+        title: minutesBefore === 60 ? 'Compromisso em 1 hora' : `Compromisso em ${minutesBefore / 60} horas`,
+        body: appointment.address ? `${appointment.description} · ${appointment.address}` : appointment.description,
+        schedule: { at: reminderDateByMinutes(appointment, minutesBefore), allowWhileIdle: true },
+        isExactNotification: true, channelId: 'pjowl-appointments', extra: { appointmentId: appointment.id, minutesBefore },
+      })),
+    ].filter((notification) => notification.schedule.at.getTime() > Date.now());
     if (notifications.length) await LocalNotifications.schedule({ notifications });
   }));
 }

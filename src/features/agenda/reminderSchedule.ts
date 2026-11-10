@@ -3,8 +3,8 @@ import type { Appointment } from '../../domain/models';
 export const REMINDER_DAYS = [7, 3, 1] as const;
 export type ReminderDay = (typeof REMINDER_DAYS)[number];
 
-export function notificationId(appointmentId: string, daysBefore: number): number {
-  const source = `${appointmentId}:${daysBefore}`;
+export function notificationId(appointmentId: string, daysBefore: number, unit: 'days' | 'minutes' = 'days'): number {
+  const source = unit === 'days' ? `${appointmentId}:${daysBefore}` : `${appointmentId}:minutes:${daysBefore}`;
   let hash = 2166136261;
   for (let index = 0; index < source.length; index += 1) {
     hash ^= source.charCodeAt(index);
@@ -27,6 +27,19 @@ export function getAppointmentReminderDays(appointment: Pick<Appointment, 'remin
   return appointment.reminder === '1440' ? [1] : [];
 }
 
+export const REMINDER_MINUTES = [60, 180, 360] as const;
+export type ReminderMinutes = (typeof REMINDER_MINUTES)[number];
+
+export function reminderDateByMinutes(appointment: Pick<Appointment, 'date' | 'time'>, minutesBefore: number): Date {
+  const eventDate = new Date(`${appointment.date}T${appointment.time || '09:00'}:00`);
+  eventDate.setMinutes(eventDate.getMinutes() - minutesBefore);
+  return eventDate;
+}
+
+export function getAppointmentReminderMinutes(appointment: Pick<Appointment, 'reminderMinutesBefore'>): ReminderMinutes[] {
+  return (appointment.reminderMinutesBefore || []).filter((minutes): minutes is ReminderMinutes => REMINDER_MINUTES.includes(minutes as ReminderMinutes));
+}
+
 export function appointmentNotificationIds(appointmentId: string): number[] {
-  return REMINDER_DAYS.map((days) => notificationId(appointmentId, days));
+  return [...REMINDER_DAYS.map((days) => notificationId(appointmentId, days)), ...REMINDER_MINUTES.map((minutes) => notificationId(appointmentId, minutes, 'minutes'))];
 }

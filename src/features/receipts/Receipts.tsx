@@ -4,6 +4,8 @@ import { amountToWords } from '../../domain/moneyWords';
 import { defaultReceiptForm, longDate, money, parseMoney, today } from '../../domain/utils';
 import { Button, Field, Mascot, SignaturePad } from '../../shared/components/ui';
 import { formatMoneyInput } from '../../shared/validation/numeric';
+import { formatDocument, sanitizeDocumentInput } from '../../shared/validation/document';
+import { Modal } from '../../shared/components/Modal';
 import { PageTitle } from '../../shared/layout/AppLayout';
 import { convertUsdCentsToBrlCents, fetchUsdBrlRate, formatExchangeRateDate, getCachedExchangeRate, type ExchangeRate } from './exchangeRate';
 
@@ -15,6 +17,8 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
   const [rateLoading, setRateLoading] = useState(false);
   const [rateStale, setRateStale] = useState(false);
   const [rateError, setRateError] = useState('');
+  const [profileWarningOpen, setProfileWarningOpen] = useState(false);
+  const [savedReceipt, setSavedReceipt] = useState<Receipt | null>(null);
 
   useEffect(() => { setProviderSignature(profile.signature); }, [profile.signature]);
   useEffect(() => {
@@ -40,13 +44,14 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
   const previewWords = convertedAmount === null ? 'Aguardando cotação do dólar.' : amountToWords(convertedAmount, 'BRL');
 
   const finalize = () => {
+    if (!profile.ownerName.trim() || !profile.businessName.trim() || !profile.document.trim()) { setProfileWarningOpen(true); return; }
     if (!form.clientName || enteredAmount <= 0 || !form.paymentDate) { notify('Preencha cliente, valor e data de pagamento.'); return; }
     if (!providerSignature || !clientSignature) { notify('As duas assinaturas são necessárias para finalizar.'); return; }
     if (form.currency === 'USD' && !exchangeRate) { notify('Não foi possível obter a cotação do dólar. Conecte-se à internet e tente novamente.'); return; }
     const receipt: Receipt = {
       id: `RF-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       clientName: form.clientName, clientDocument: form.clientDocument,
-      providerName: profile.ownerName, providerDocument: profile.document, businessName: profile.businessName,
+      providerName: profile.ownerName, providerDocument: profile.document, providerLogo: profile.logo || undefined, businessName: profile.businessName,
       description: form.description, amount: convertedAmount ?? 0, currency: 'BRL',
       ...(form.currency === 'USD' && exchangeRate ? { originalCurrency: 'USD' as const, originalAmount: enteredAmount, exchangeRate: exchangeRate.rate, exchangeRateDate: exchangeRate.quotedAt } : {}),
       paymentMethod: form.paymentMethod, installment: form.installment, notes: form.notes,
@@ -54,8 +59,8 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
       finalizedAt: new Date().toISOString(), status: 'FINALIZADO',
     };
     setReceipts((current) => [receipt, ...current]);
-    notify('Recibo finalizado e protegido no histórico.');
-    navigate('history');
+    setSavedReceipt(receipt);
+    notify('Recibo finalizado e salvo no histórico.');
   };
 
   return <div className="page">
@@ -67,7 +72,7 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
           <div className="stack-form">
             <div className="two-fields">
               <Field label="Nome do cliente"><input value={form.clientName} onChange={(e) => update('clientName', e.target.value)} placeholder="Nome completo" /></Field>
-              <Field label="CPF/CNPJ do cliente"><input value={form.clientDocument} onChange={(e) => update('clientDocument', e.target.value)} placeholder="Opcional" /></Field>
+              <Field label="CPF/CNPJ do cliente"><input value={formatDocument(form.clientDocument)} onChange={(e) => update('clientDocument', sanitizeDocumentInput(e.target.value))} placeholder="Opcional" inputMode="text" autoCapitalize="characters" /></Field>
             </div>
             <Field label="Descrição do serviço ou produto"><input value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Ex.: 20 lembrancinhas personalizadas" /></Field>
             <div className="three-fields">
@@ -97,6 +102,8 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
       </div>
       <ReceiptPreview profile={profile} form={form} providerSignature={providerSignature} clientSignature={clientSignature} amountInBrl={convertedAmount} amountWords={previewWords} originalAmount={form.currency === 'USD' ? enteredAmount : undefined} exchangeRate={form.currency === 'USD' ? exchangeRate : null} />
     </div>
+    <Modal open={profileWarningOpen} onOpenChange={setProfileWarningOpen} title="Complete seu perfil antes de emitir" description="Para gerar um recibo, informe os três dados obrigatórios do negócio."><ul className="profile-required-list"><li>Nome do responsável: {profile.ownerName.trim() ? 'preenchido' : 'pendente'}</li><li>Nome fantasia: {profile.businessName.trim() ? 'preenchido' : 'pendente'}</li><li>CPF/CNPJ: {profile.document.trim() ? 'preenchido' : 'pendente'}</li></ul><p className="muted">Logo do negócio e assinatura padrão são opcionais.</p><Button onClick={() => { setProfileWarningOpen(false); navigate('profile'); }}>Completar perfil</Button></Modal>
+    <Modal open={!!savedReceipt} onOpenChange={(open) => { if (!open) setSavedReceipt(null); }} title="Recibo salvo com sucesso" description={savedReceipt?.id} size="wide">{savedReceipt && <div className="saved-receipt-details">{savedReceipt.providerLogo && <img className="saved-receipt-logo" src={savedReceipt.providerLogo} alt="Logo do negócio" />}<div className="saved-receipt-total">{money(savedReceipt.amount, savedReceipt.currency)}</div><p><strong>Recebi de:</strong> {savedReceipt.clientName}</p><p><strong>CPF/CNPJ:</strong> {savedReceipt.clientDocument ? formatDocument(savedReceipt.clientDocument) : 'Não informado'}</p><p><strong>Prestador:</strong> {savedReceipt.providerName}</p><p><strong>Negócio:</strong> {savedReceipt.businessName}</p><p><strong>Documento:</strong> {formatDocument(savedReceipt.providerDocument)}</p><p><strong>Valor por extenso:</strong> {amountToWords(savedReceipt.amount, savedReceipt.currency)}</p><p><strong>Referente a:</strong> {savedReceipt.description || 'Serviço ou produto'}</p><p><strong>Pagamento:</strong> {savedReceipt.paymentMethod}{savedReceipt.installment ? ` · ${savedReceipt.installment}` : ''}</p><p><strong>Data:</strong> {longDate(savedReceipt.paymentDate)}</p>{savedReceipt.originalCurrency === 'USD' && savedReceipt.originalAmount !== undefined && <p><strong>Valor original:</strong> {money(savedReceipt.originalAmount, 'USD')} · cotação {savedReceipt.exchangeRate?.toFixed(4) ?? 'N/D'} BRL/USD</p>}{savedReceipt.notes && <p><strong>Observações:</strong> {savedReceipt.notes}</p>}<div className="saved-signatures"><div>{savedReceipt.providerSignature && <img src={savedReceipt.providerSignature} alt="Assinatura do prestador" />}<span>{savedReceipt.providerName}</span></div><div>{savedReceipt.clientSignature && <img src={savedReceipt.clientSignature} alt="Assinatura do cliente" />}<span>{savedReceipt.clientName}</span></div></div><div className="form-actions-inline"><Button variant="ghost" onClick={() => { setSavedReceipt(null); navigate('history'); }}>Ir para histórico</Button></div></div>}</Modal>
   </div>;
 }
 
