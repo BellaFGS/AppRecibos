@@ -63,6 +63,8 @@ export interface Appointment {
   address: string;
   /** Dias antes do compromisso em que o usuário deseja receber alertas. */
   reminderDays?: number[];
+  /** Minutos antes do compromisso para lembretes no mesmo dia. */
+  reminderMinutesBefore?: number[];
   /** Campo legado preservado para compatibilidade com backups antigos. */
   reminder?: string;
 }
@@ -82,6 +84,7 @@ export interface Receipt {
   clientDocument: string;
   providerName: string;
   providerDocument: string;
+  providerLogo?: string;
   businessName: string;
   description: string;
   amount: number;

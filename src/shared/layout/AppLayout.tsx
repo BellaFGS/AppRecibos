@@ -8,7 +8,7 @@ export function Sidebar({ active, navigate, profile }: { active: Section; naviga
 }
 
 export function MobileHeader({ active, navigate }: { active: Section; navigate: (section: Section) => void }) {
-  const label = navItems.find((item) => item.id === active)?.label || 'Início';
+  const label = active === 'history' ? 'Histórico' : active === 'expenses' ? 'Despesas' : navItems.find((item) => item.id === active)?.label || 'Início';
   return <><header className="mobile-header"><button className="mobile-brand" onClick={() => navigate('dashboard')}><span className="brand-mark"><Mascot size="small" /></span><strong>PJ <span>OWL</span></strong></button><button className="mobile-action" onClick={() => navigate('profile')}><Icon name="user" /></button></header><div className="mobile-page-title"><span>{label}</span><div className="mobile-line" /></div><nav className="mobile-nav">{navItems.map((item) => <button key={item.id} className={active === item.id ? 'mobile-nav-item active' : 'mobile-nav-item'} onClick={() => navigate(item.id)}><Icon name={item.icon} size={18} /><span>{item.label === 'Novo recibo' ? 'Novo' : item.label}</span></button>)}</nav></>;
 }
 

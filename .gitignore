@@ -12,6 +12,3 @@ local.properties
 android/.gradle/
 android/build/
 android/app/build/
-*.jks
-*.keystore
-keystore-base64.txt
