@@ -7,7 +7,8 @@ import {
   cancelAppointmentNotifications,
   scheduleAppointmentNotifications,
 } from './appointmentNotifications';
-import { getAppointmentReminderDays, REMINDER_DAYS, type ReminderDay } from './reminderSchedule';
+import { getAppointmentReminderDays, getAppointmentReminderMinutes, REMINDER_DAYS, REMINDER_MINUTES, type ReminderDay, type ReminderMinutes } from './reminderSchedule';
+import { Modal } from '../../shared/components/Modal';
 
 type AppointmentForm = {
   date: string;
@@ -15,6 +16,7 @@ type AppointmentForm = {
   description: string;
   address: string;
   reminderDays: ReminderDay[];
+  reminderMinutesBefore: ReminderMinutes[];
 };
 
 type Props = {
@@ -24,12 +26,15 @@ type Props = {
   notify: (message: string) => void;
 };
 
-const emptyForm = (): AppointmentForm => ({ date: today(), time: '09:00', description: '', address: '', reminderDays: [1] });
+const emptyForm = (): AppointmentForm => ({ date: today(), time: '09:00', description: '', address: '', reminderDays: [1], reminderMinutesBefore: [] });
 
 export function Agenda({ appointments, setAppointments, setDeleteTarget, notify }: Props) {
   const [form, setForm] = useState<AppointmentForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const sorted = [...appointments].sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+
+  const toggleReminderHour = (minutes: ReminderMinutes) => setForm((current) => ({ ...current, reminderMinutesBefore: current.reminderMinutesBefore.includes(minutes) ? current.reminderMinutesBefore.filter((value) => value !== minutes) : [...current.reminderMinutesBefore, minutes] }));
 
   const toggleReminder = (day: ReminderDay) => {
     setForm((current) => ({
@@ -54,6 +59,7 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
       description: form.description.trim(),
       address: form.address.trim(),
       reminderDays: form.reminderDays,
+      reminderMinutesBefore: form.reminderMinutesBefore,
     };
 
     try {
@@ -65,10 +71,10 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
       setEditingId(null);
       if (result === 'permission-denied') {
         notify('Compromisso salvo. Permita notificações nas configurações do Android para receber os lembretes.');
-      } else if (result === 'unsupported' && appointment.reminderDays?.length) {
+      } else if (result === 'unsupported' && (appointment.reminderDays?.length || appointment.reminderMinutesBefore?.length)) {
         notify('Compromisso salvo. Os alertas programados ficam disponíveis na versão Android.');
       } else {
-        notify(editingId ? 'Compromisso atualizado e lembretes reajustados.' : 'Compromisso salvo e lembretes agendados.');
+        notify(result === 'none' ? 'Compromisso salvo sem lembretes.' : (editingId ? 'Compromisso atualizado e lembretes reajustados.' : 'Compromisso salvo e lembretes agendados.'));
       }
     } catch {
       setAppointments((current) => [appointment, ...current.filter((item) => item.id !== appointment.id)]
@@ -87,6 +93,7 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
       description: item.description,
       address: item.address ?? '',
       reminderDays: getAppointmentReminderDays(item),
+      reminderMinutesBefore: getAppointmentReminderMinutes(item),
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -138,6 +145,7 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
                   <span>{day} {day === 1 ? 'dia antes' : 'dias antes'}</span>
                 </label>)}
               </div>
+              <p className="reminder-subtitle">No mesmo dia</p><div className="reminder-checks">{REMINDER_MINUTES.map((minutes) => <label key={minutes}><input type="checkbox" checked={form.reminderMinutesBefore.includes(minutes)} onChange={() => toggleReminderHour(minutes)} /><span>{minutes / 60} {minutes === 60 ? 'hora antes' : 'horas antes'}</span></label>)}</div>
             </fieldset>
             <div className="form-actions-inline">
               <Button type="submit" icon="check">{editingId ? 'Salvar alterações' : 'Guardar compromisso'}</Button>
@@ -152,18 +160,19 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
             <div className="appointment-item" key={item.id}>
               <div className="date-tile large"><strong>{new Date(`${item.date}T12:00:00`).getDate()}</strong><span>{new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(new Date(`${item.date}T12:00:00`)).replace('.', '')}</span></div>
               <div className="appointment-content">
-                <div className="appointment-top"><strong>{item.description}</strong><div className="appointment-actions">
+                <div className="appointment-top"><button className="appointment-title-button" type="button" onClick={() => setSelectedAppointment(item)}>{item.description}</button><div className="appointment-actions"><button className="mini-delete" type="button" title="Visualizar compromisso" onClick={() => setSelectedAppointment(item)}><Icon name="info" size={15} /></button>
                   <button className="mini-delete" type="button" title="Editar compromisso" aria-label={`Editar ${item.description}`} onClick={() => editAppointment(item)}><Icon name="edit" size={15} /></button>
                   <button className="mini-delete" type="button" title="Excluir compromisso" aria-label={`Excluir ${item.description}`} onClick={() => setDeleteTarget({ type: 'appointment', id: item.id })}><Icon name="trash" size={15} /></button>
                 </div></div>
                 <span><Icon name="clock" size={13} /> {longDate(item.date)} às {item.time}</span>
-                <span><Icon name="bell" size={13} /> {getAppointmentReminderDays(item).length ? [...getAppointmentReminderDays(item)].sort((a, b) => b - a).map((day) => `${day} dia${day > 1 ? 's' : ''}`).join(', ') + ' antes' : 'Sem lembretes'}</span>
+                <span><Icon name="bell" size={13} /> {[...getAppointmentReminderDays(item).map((day) => `${day} dia${day > 1 ? 's' : ''} antes`), ...getAppointmentReminderMinutes(item).map((minutes) => `${minutes / 60}h antes`)].join(', ') || 'Sem lembretes'}</span>
                 {item.address && <div className="appointment-address"><span><Icon name="target" size={13} /> {item.address}</span><button type="button" className="copy-address-button" onClick={() => void copyAddress(item.address)}><Icon name="copy" size={14} /> Copiar endereço</button></div>}
               </div>
             </div>
           ))}</div> : <EmptyState title="Sua agenda está tranquila" text="Adicione o próximo compromisso para não deixar nada escapar." action="Preencher agora" onAction={() => document.querySelector<HTMLInputElement>('input[placeholder^="Ex."]')?.focus()} />}
         </div>
       </section>
+      <Modal open={!!selectedAppointment} onOpenChange={(open) => { if (!open) setSelectedAppointment(null); }} title="Detalhes do compromisso" description={selectedAppointment?.description}><div className="appointment-detail-modal">{selectedAppointment && <><p><b>Descrição:</b> {selectedAppointment.description}</p><p><b>Data:</b> {longDate(selectedAppointment.date)} às {selectedAppointment.time}</p><p><b>Endereço:</b> {selectedAppointment.address || 'Não informado'}</p><p><b>Lembretes:</b> {[...getAppointmentReminderDays(selectedAppointment).map((day) => `${day} dia(s) antes`), ...getAppointmentReminderMinutes(selectedAppointment).map((minutes) => `${minutes / 60} hora(s) antes`)].join(', ') || 'Nenhum'}</p></>}</div></Modal>
     </div>
   );
 }
