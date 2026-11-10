@@ -51,8 +51,11 @@ input, select, textarea { color: var(--ink); }
 .profile-shortcut small { color: #988fa3; font-size: 10px; margin-top: 3px; }
 .avatar { width: 31px; height: 31px; border-radius: 11px; background: #f9c5d4; color: #a44265; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
 .main-content { flex: 1; padding: 42px clamp(22px, 5vw, 78px) 80px; overflow: hidden; width: 100vw;}
-.page { width: min(1180px, 100%); margin: 0 auto; animation: pageIn .4s ease both; }
-@keyframes pageIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+.page { width: min(1180px, 100%); margin: 0 auto; animation: pageFadeIn .4s ease both; }
+/* A animação da página altera somente a opacidade. Não aplicar transform aqui:
+   transform cria um containing block e pode prender position: fixed ao conteúdo. */
+@keyframes pageFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
 .page-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
 .page-title h1 { font-size: clamp(29px, 4vw, 42px); letter-spacing: -.07em; margin: 8px 0 7px; line-height: 1; color: #332a43; }
 .page-title p { margin: 0; color: #8b8195; font-size: 14px; max-width: 590px; line-height: 1.6; font-weight: 500; }
@@ -97,7 +100,7 @@ input, select, textarea { color: var(--ink); }
 .mascot-success .mascot-face { background: #70c5b8; }.mascot-success .mascot-ear { background: #70c5b8; }.mascot-thinking .mascot-face { background: #e5a5cb; }.mascot-thinking .mascot-ear { background: #e5a5cb; }
 
 /* dashboard */
-.period-switch { display: flex; gap: 5px; align-items: center; margin: -6px 0 17px; }
+.period-switch { display: flex; gap: 5px; align-items: center; justify-content: center; margin: 20px 0px 0px 0px; }
 .period-switch > span { color: #8f8498; font-size: 11px; font-weight: 800; margin-right: 5px; }
 .period-switch button { border: 0; background: transparent; padding: 7px 10px; color: #a198aa; border-radius: 9px; font-size: 11px; font-weight: 800; }
 .period-switch button.active { background: #fff; color: var(--lilac-dark); box-shadow: 0 3px 12px rgba(89, 62, 124, .07); }
@@ -140,7 +143,6 @@ input, select, textarea { color: var(--ink); }
 .original-cost-detail strong { color: #7652ac; text-transform: capitalize; }
 @media (max-width: 780px) { .billing-tabs { overflow-x: auto; } .billing-tabs button { white-space: nowrap; } }
 
-/* Issue 06: valor por extenso e informação da conversão cambial. */
 .paper-amount-words { margin: 7px 0 0; color: #62596e; font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
 .paper-conversion { margin: 5px 0 0; color: #8f8498; font-size: 9px; line-height: 1.4; }
 .exchange-rate-note { display: flex; flex-direction: column; gap: 5px; padding: 11px 13px; border: 1px solid #e8def2; border-radius: 12px; background: #faf7fd; color: #62596e; font-size: 12px; }
@@ -148,7 +150,6 @@ input, select, textarea { color: var(--ink); }
 .exchange-rate-note button { align-self: flex-start; border: 0; padding: 3px 0; background: transparent; color: #7651ad; font-size: 11px; font-weight: 800; cursor: pointer; }
 .warning-text { color: #a66a24; }
 
-/* Calculadora unificada: recursos mistos, composição e histórico */
 .resource-detail { display:flex; flex-direction:column; gap:4px; min-width:0; flex:1; }
 .resource-detail small { color:var(--muted, #777); font-size:.78rem; }
 .text-button { border:0; background:transparent; color:var(--accent, #6b5bd2); padding:3px 0; text-align:left; cursor:pointer; font:inherit; font-size:.8rem; }
@@ -162,7 +163,6 @@ input, select, textarea { color: var(--ink); }
 .negative-value { color:#c04444 !important; }
 @media (max-width: 760px) { .cost-form { grid-template-columns:1fr !important; } .saved-item { flex-wrap:wrap; } .saved-actions { margin-left:auto; } }
 
-/* Modal reutilizável baseado em Radix UI Dialog. */
 .app-modal-overlay { position: fixed; inset: 0; z-index: 80; background: rgba(35, 27, 45, .48); backdrop-filter: blur(3px); animation: modalFadeIn .16s ease-out; }
 .app-modal-content { position: fixed; z-index: 81; top: 50%; left: 50%; width: min(440px, calc(100vw - 32px)); max-height: min(86vh, 820px); overflow: auto; transform: translate(-50%, -50%); border: 1px solid #eee7f3; border-radius: 22px; padding: 23px; background: #fff; box-shadow: 0 28px 90px rgba(35, 20, 49, .28); animation: modalPopIn .18s ease-out; outline: none; }
 .app-modal-wide { width: min(760px, calc(100vw - 32px)); }
@@ -323,3 +323,409 @@ input, select, textarea { color: var(--ink); }
 
 .chart-bars-scroll { flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 .chart-bars { min-width: 100%; }
+
+/* =========================================================
+   MODAIS RADIX UI - CENTRALIZAÇÃO FIXA NA VIEWPORT
+   ========================================================= */
+
+/* Fundo do modal: ocupa toda a viewport */
+.app-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+
+  z-index: 9998;
+
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  display: grid;
+  place-items: center;
+
+  padding: 16px;
+
+  background: rgba(48, 38, 61, 0.48);
+  backdrop-filter: blur(3px);
+
+  animation: overlayFadeIn 0.2s ease-out;
+}
+
+/* Modal centralizado na viewport */
+.app-modal-content {
+  position: fixed !important;
+
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+
+  transform: translate(-50%, -50%) !important;
+
+  z-index: 9999;
+
+  width: min(440px, calc(100vw - 32px));
+
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+
+  margin: 0 !important;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  border: 1px solid #eee7f3;
+  border-radius: 22px;
+
+  padding: 23px;
+
+  background: #fff;
+
+  box-shadow: 0 28px 90px rgba(35, 20, 49, 0.28);
+
+  animation: modalFadeIn 0.2s ease-out;
+
+  outline: none;
+
+  overscroll-behavior: contain;
+}
+
+/* Modal em tamanho expandido */
+.app-modal-content.app-modal-wide {
+  width: min(760px, calc(100vw - 32px));
+}
+
+/* Cabeçalho */
+.app-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.app-modal-title {
+  margin: 0;
+  color: #30263d;
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -.04em;
+  font-weight: 800;
+}
+
+.app-modal-description {
+  margin-top: 7px;
+  color: #94899d;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Botão de fechar */
+.app-modal-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+
+  width: 32px;
+  height: 32px;
+
+  border: 0;
+  border-radius: 10px;
+
+  background: #f6f2f8;
+  color: #867a91;
+
+  cursor: pointer;
+}
+
+.app-modal-close:hover {
+  background: #eee6f6;
+  color: #65459b;
+}
+
+/* Corpo */
+.app-modal-body {
+  margin-top: 19px;
+}
+
+.app-modal-message {
+  margin: 0;
+  color: #756b7e;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+/* Rodapé */
+.app-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 23px;
+}
+
+/* Animações sem modificar o posicionamento do modal */
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   DETALHES DA CALCULADORA
+   ========================================================= */
+
+.calculation-detail {
+  display: grid;
+  gap: 20px;
+}
+
+.calculation-detail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.calculation-detail-heading h3,
+.calculation-detail-totals h3 {
+  margin: 0;
+  color: #51445f;
+  font-size: 13px;
+}
+
+.calculation-detail-heading > span {
+  color: #9c91a5;
+  font-size: 10px;
+}
+
+.calculation-detail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid #f0eaf4;
+}
+
+.calculation-detail-item-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.calculation-detail-item-main strong {
+  color: #44384f;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.calculation-detail-item-main span,
+.calculation-detail-item-main small {
+  color: #958a9e;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.calculation-detail-item > strong {
+  color: #6848a0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.calculation-detail-totals {
+  display: grid;
+  gap: 0;
+  padding: 16px;
+  border: 1px solid #eee7f4;
+  border-radius: 15px;
+  background: #fbf9fd;
+}
+
+.calculation-detail-totals h3 {
+  margin-bottom: 9px;
+}
+
+.calculation-detail-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid #f0eaf4;
+  font-size: 11px;
+}
+
+.calculation-detail-totals > div span {
+  color: #91869a;
+}
+
+.calculation-detail-totals > div strong {
+  color: #51445f;
+  text-align: right;
+}
+
+.calculation-detail-totals > .calculation-detail-final {
+  margin-top: 4px;
+  padding-top: 13px;
+}
+
+.calculation-detail-totals > .calculation-detail-final span {
+  color: #614199;
+  font-weight: 800;
+}
+
+.calculation-detail-totals > .calculation-detail-final strong {
+  color: #614199;
+  font-size: 17px;
+}
+
+.calculation-saved-item > span {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Detalhes da calculadora em telas maiores */
+@media (min-width: 650px) {
+  .calculation-detail {
+    grid-template-columns: minmax(0, 1.15fr) minmax(240px, .85fr);
+    align-items: start;
+  }
+
+  .calculation-detail-totals {
+    position: sticky;
+    top: 0;
+  }
+}
+
+/* =========================================================
+   RESPONSIVIDADE DOS MODAIS
+   ========================================================= */
+
+@media (max-width: 520px) {
+  .app-modal-overlay {
+    padding: 16px;
+  }
+
+  .app-modal-content {
+    width: calc(100vw - 32px);
+    max-width: 480px;
+
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+
+    padding: 19px;
+    border-radius: 20px;
+  }
+
+  .app-modal-content.app-modal-wide {
+    width: calc(100vw - 32px);
+  }
+
+  .app-modal-title {
+    font-size: 18px;
+  }
+
+  .calculation-detail-item {
+    align-items: flex-start;
+  }
+
+  .calculation-saved-item {
+    align-items: flex-start;
+  }
+}
+
+
+/* =========================================================
+   CORREÇÃO DEFINITIVA: MODAL DE EXCLUSÃO DO PERFIL
+   Centralizado na viewport inteira, inclusive sobre a mobile-nav.
+   ========================================================= */
+
+/* O .page não deve criar um containing block para elementos fixed.
+   A animação pageFadeIn acima evita transform durante e após a entrada. */
+.modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+
+  z-index: 10000 !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  padding: 16px !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  background: rgba(48, 38, 61, 0.48);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+
+  animation: overlayFadeIn 0.2s ease-out;
+}
+
+/* O modal é um item centralizado pelo grid do backdrop.
+   Não usar transform para posicioná-lo, pois isso conflita com animações. */
+.modal {
+  position: relative !important;
+
+  inset: auto !important;
+  transform: none !important;
+
+  width: min(390px, 100%) !important;
+  max-width: 100%;
+
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+
+  margin: auto !important;
+  padding: 25px;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 25px 80px rgba(35, 20, 49, 0.22);
+
+  animation: modalFadeIn 0.2s ease-out !important;
+}
+
+@media (max-width: 520px) {
+  .modal-backdrop {
+    place-items: center !important;
+    align-items: center !important;
+    justify-items: center !important;
+    padding: 16px !important;
+  }
+
+  .modal {
+    width: min(390px, 100%) !important;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    padding: 21px;
+    border-radius: 20px;
+  }
+}
+
+/* O conteúdo da página não pode recortar ou reposicionar o backdrop.
+   O modal deve continuar cobrindo a barra de navegação inferior. */

@@ -96,25 +96,7 @@ export function Dashboard({
         onAction={() => navigate('receipt')}
       />
 
-      {/* Filtro de período */}
-      <div className="period-switch">
-        <span>Visão financeira</span>
-
-        {(['week', 'month', 'year'] as const).map((value) => (
-          <button
-            key={value}
-            className={period === value ? 'active' : ''}
-            onClick={() => setPeriod(value)}
-            aria-pressed={period === value}
-          >
-            {value === 'week'
-              ? '7 dias'
-              : value === 'month'
-                ? 'Por mês'
-                : 'Este ano'}
-          </button>
-        ))}
-      </div>
+      
 
       {/* Indicadores financeiros */}
       <section className="metric-grid">
@@ -151,8 +133,29 @@ export function Dashboard({
         />
       </section>
 
+      
+
       {/* Gráfico de movimentações reais */}
       <section className="dashboard-grid">
+        {/* Filtro de período */}
+      <div className="period-switch">
+        <span>Visão financeira</span>
+
+        {(['week', 'month', 'year'] as const).map((value) => (
+          <button
+            key={value}
+            className={period === value ? 'active' : ''}
+            onClick={() => setPeriod(value)}
+            aria-pressed={period === value}
+          >
+            {value === 'week'
+              ? '7 dias'
+              : value === 'month'
+                ? 'Por mês'
+                : 'Este ano'}
+          </button>
+        ))}
+      </div>
         <div className="card chart-card">
           <div className="card-heading">
             <div>

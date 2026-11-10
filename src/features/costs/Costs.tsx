@@ -426,7 +426,7 @@ export function Costs({
               )}
 
               <Field
-                label={kind === 'hourly' ? 'Horas de trabalho' : 'Quantidade'}
+                label={kind === 'hourly' ? 'Horas de trabalho' : 'Valor da Unidade'}
                 
               >
                 <input
