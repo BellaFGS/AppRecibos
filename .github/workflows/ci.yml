@@ -17,6 +17,7 @@ jobs:
   validate-web:
     name: Typecheck, tests and web build
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,10 +53,11 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  android-debug:
-    name: Android debug APK
+  android-release:
+    name: Android release APK
     runs-on: ubuntu-latest
     needs: validate-web
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,17 +85,26 @@ jobs:
           packages: platform-tools
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
+
       - name: Check signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           missing=0
-          [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] && echo "::error::Missing secret: KEYSTORE_BASE64" && missing=1
-          [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] && echo "::error::Missing secret: KEYSTORE_PASSWORD" && missing=1
-          [ -z "${{ secrets.KEY_ALIAS }}" ] && echo "::error::Missing secret: KEY_ALIAS" && missing=1
-          [ -z "${{ secrets.KEY_PASSWORD }}" ] && echo "::error::Missing secret: KEY_PASSWORD" && missing=1
+
+          [ -z "$KEYSTORE_BASE64" ] && echo "::error::Missing secret: KEYSTORE_BASE64" && missing=1
+          [ -z "$KEYSTORE_PASSWORD" ] && echo "::error::Missing secret: KEYSTORE_PASSWORD" && missing=1
+          [ -z "$KEY_ALIAS" ] && echo "::error::Missing secret: KEY_ALIAS" && missing=1
+          [ -z "$KEY_PASSWORD" ] && echo "::error::Missing secret: KEY_PASSWORD" && missing=1
+
           if [ "$missing" -eq 1 ]; then
-            echo "Configure os secrets em Settings > Secrets and variables > Actions antes de usar este workflow."
+            echo "Configure os secrets em Settings > Secrets and variables > Actions."
             exit 1
           fi
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
@@ -125,7 +136,7 @@ jobs:
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/app-release.keystore"
           chmod 600 "$RUNNER_TEMP/app-release.keystore"
-          ls -lh "$RUNNER_TEMP/app-release.keystore"
+          test -s "$RUNNER_TEMP/app-release.keystore"
 
       - name: Build release APK (signed)
         working-directory: android
@@ -138,10 +149,16 @@ jobs:
           VERSION_NAME: "1.0.${{ github.run_number }}"
         run: ./gradlew --no-daemon assembleRelease
 
-      - name: Upload release APK
+      - name: Verify release APK
+        run: |
+          echo "Verificando APK de release..."
+          find android/app/build/outputs/apk -type f -name "*.apk"
+          test -s android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload Android release APK
         uses: actions/upload-artifact@v4
         with:
-          name: pj-owl-android-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: pj-owl-android-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
