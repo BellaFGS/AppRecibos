@@ -2,19 +2,23 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.pjowl.recibos"
-    compileSdk = rootProject.ext.compileSdkVersion
+    namespace "com.pjowl.recibos"
+    compileSdk rootProject.ext.compileSdkVersion
+
+    def appVersionCode = System.getenv("VERSION_CODE") ?: "1"
+    def appVersionName = System.getenv("VERSION_NAME") ?: "1.0"
 
     defaultConfig {
         applicationId "com.pjowl.recibos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (System.getenv("VERSION_CODE") ?: "1").toInteger()
-        versionName System.getenv("VERSION_NAME") ?: "1.0"
+
+        versionCode appVersionCode.toInteger()
+        versionName appVersionName
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         aaptOptions {
-            // Files and dirs to omit from the packaged assets dir.
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
