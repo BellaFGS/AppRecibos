@@ -121,3 +121,17 @@ export function getDocumentError(value: string): string | null {
 
   return null;
 }
+
+/**
+ * Valida um documento quando seu preenchimento é opcional.
+ * Documentos vazios são considerados válidos.
+ */
+export function getOptionalDocumentError(value: string): string | null {
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return getDocumentError(normalized);
+}
