@@ -4,7 +4,7 @@ import { amountToWords } from '../../domain/moneyWords';
 import { defaultReceiptForm, longDate, money, parseMoney, today } from '../../domain/utils';
 import { Button, Field, Mascot, SignaturePad } from '../../shared/components/ui';
 import { formatMoneyInput } from '../../shared/validation/numeric';
-import { formatDocument, sanitizeDocumentInput } from '../../shared/validation/document';
+import { formatDocument, sanitizeDocumentInput, getDocumentError } from '../../shared/validation/document';
 import { Modal } from '../../shared/components/Modal';
 import { PageTitle } from '../../shared/layout/AppLayout';
 import { convertUsdCentsToBrlCents, fetchUsdBrlRate, formatExchangeRateDate, getCachedExchangeRate, type ExchangeRate } from './exchangeRate';
@@ -43,25 +43,57 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
   const convertedAmount = form.currency === 'USD' ? (exchangeRate ? convertUsdCentsToBrlCents(enteredAmount, exchangeRate.rate) : null) : enteredAmount;
   const previewWords = convertedAmount === null ? 'Aguardando cotação do dólar.' : amountToWords(convertedAmount, 'BRL');
 
+  
   const finalize = () => {
-    if (!profile.ownerName.trim() || !profile.businessName.trim() || !profile.document.trim()) { setProfileWarningOpen(true); return; }
-    if (!form.clientName || enteredAmount <= 0 || !form.paymentDate) { notify('Preencha cliente, valor e data de pagamento.'); return; }
+    if ( !profile.ownerName.trim() || !profile.businessName.trim() || !profile.document.trim() ) { setProfileWarningOpen(true); return; }
+    if (!form.clientName.trim() || enteredAmount <= 0 || !form.paymentDate) { notify('Preencha cliente, valor e data de pagamento.'); return; }
+
+    const documentError = getDocumentError(form.clientDocument);
+    if (documentError) { notify(documentError); return; }
     if (!providerSignature || !clientSignature) { notify('As duas assinaturas são necessárias para finalizar.'); return; }
     if (form.currency === 'USD' && !exchangeRate) { notify('Não foi possível obter a cotação do dólar. Conecte-se à internet e tente novamente.'); return; }
     const receipt: Receipt = {
       id: `RF-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-      clientName: form.clientName, clientDocument: form.clientDocument,
-      providerName: profile.ownerName, providerDocument: profile.document, providerLogo: profile.logo || undefined, businessName: profile.businessName,
-      description: form.description, amount: convertedAmount ?? 0, currency: 'BRL',
-      ...(form.currency === 'USD' && exchangeRate ? { originalCurrency: 'USD' as const, originalAmount: enteredAmount, exchangeRate: exchangeRate.rate, exchangeRateDate: exchangeRate.quotedAt } : {}),
-      paymentMethod: form.paymentMethod, installment: form.installment, notes: form.notes,
-      paymentDate: form.paymentDate, providerSignature, clientSignature,
-      finalizedAt: new Date().toISOString(), status: 'FINALIZADO',
+      clientName: form.clientName,
+      clientDocument: form.clientDocument,
+      providerName: profile.ownerName,
+      providerDocument: profile.document,
+      providerLogo: profile.logo || undefined,
+      businessName: profile.businessName,
+      description: form.description,
+      amount: convertedAmount ?? 0,
+      currency: 'BRL',
+      ...(form.currency === 'USD' && exchangeRate
+        ? {
+            originalCurrency: 'USD' as const,
+            originalAmount: enteredAmount,
+            exchangeRate: exchangeRate.rate,
+            exchangeRateDate: exchangeRate.quotedAt
+          }
+        : {}),
+      paymentMethod: form.paymentMethod,
+      installment: form.installment,
+      notes: form.notes,
+      paymentDate: form.paymentDate,
+      providerSignature,
+      clientSignature,
+      finalizedAt: new Date().toISOString(),
+      status: 'FINALIZADO',
     };
+
+    
     setReceipts((current) => [receipt, ...current]);
+
+    // Limpa os campos do formulário após salvar o recibo.
+    setForm(defaultReceiptForm);
+    setClientSignature('');
+    setProviderSignature(profile.signature);
+
     setSavedReceipt(receipt);
     notify('Recibo finalizado e salvo no histórico.');
+
   };
+
 
   return <div className="page">
     <PageTitle eyebrow="Documento profissional" title="Criar novo recibo" description="Preencha os dados, colha as duas assinaturas e finalize com tranquilidade." />
@@ -71,8 +103,8 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
           <div className="card-heading"><div><span className="section-kicker">Dados do pagamento</span><h2>Quem pagou e pelo quê?</h2></div><span className="step-chip">1 de 2</span></div>
           <div className="stack-form">
             <div className="two-fields">
-              <Field label="Nome do cliente"><input value={form.clientName} onChange={(e) => update('clientName', e.target.value)} placeholder="Nome completo" /></Field>
-              <Field label="CPF/CNPJ do cliente"><input value={formatDocument(form.clientDocument)} onChange={(e) => update('clientDocument', sanitizeDocumentInput(e.target.value))} placeholder="Opcional" inputMode="text" autoCapitalize="characters" /></Field>
+              <Field label="Nome do cliente"><input value={form.clientName} onChange={(e) => update('clientName', e.target.value)} placeholder="Nome completo" required /></Field>
+              <Field label="CPF/CNPJ do cliente"><input value={formatDocument(form.clientDocument)} onChange={(e) => update('clientDocument', sanitizeDocumentInput(e.target.value))} placeholder="000-000-000-00 | 0A.BCD.EFG/0000-00" inputMode="text" autoCapitalize="characters" required /></Field>
             </div>
             <Field label="Descrição do serviço ou produto"><input value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Ex.: 20 lembrancinhas personalizadas" /></Field>
             <div className="three-fields">
