@@ -8,11 +8,9 @@ on:
       - '**.md'
       - 'docs/**'
 
-
   pull_request:
     branches: [main, develop]
 
-# Permissão padrão: somente leitura.
 permissions:
   contents: read
 
@@ -20,15 +18,9 @@ jobs:
   # ============================================================
   # 1. VALIDACAO WEB
   # ============================================================
-  # ============================================================
-  # 1. VALIDACAO WEB
-  # ============================================================
   validate-web:
     name: Typecheck, tests and web build
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
 
     permissions:
       contents: read
@@ -71,19 +63,10 @@ jobs:
   # ============================================================
   # 2. COMPILACAO ANDROID
   # ============================================================
-  # ============================================================
-  # 2. COMPILACAO ANDROID
-  # ============================================================
   android-release:
     name: Android APK
     runs-on: ubuntu-latest
     needs: validate-web
-
-    permissions:
-      contents: read
-
-    outputs:
-      apk_artifact_name: ${{ steps.verify.outputs.apk_name }}
 
     permissions:
       contents: read
@@ -145,7 +128,7 @@ jobs:
         run: chmod +x gradlew
 
       # --------------------------------------------------------
-      # Verifica se a execução exige uma Release oficial
+      # Verifica se a execução pode publicar uma Release
       # --------------------------------------------------------
       - name: Check release conditions
         id: release
@@ -153,9 +136,13 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
           PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           if [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/main" ]] ||
-             [[ "$EVENT_NAME" == "pull_request" && "$PR_BASE" == "main" ]]; then
+             [[ "$EVENT_NAME" == "pull_request" &&
+                "$PR_BASE" == "main" &&
+                "$PR_HEAD_REPO" == "$REPOSITORY" ]]; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           else
             echo "required=false" >> "$GITHUB_OUTPUT"
@@ -177,9 +164,7 @@ jobs:
              [ -n "$KEY_ALIAS" ] &&
              [ -n "$KEY_PASSWORD" ]; then
 
-
             echo "enabled=true" >> "$GITHUB_OUTPUT"
-
 
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
@@ -211,9 +196,6 @@ jobs:
       # --------------------------------------------------------
       # Compila APK assinado
       # --------------------------------------------------------
-      # --------------------------------------------------------
-      # Compila APK assinado
-      # --------------------------------------------------------
       - name: Build release APK (signed)
         if: steps.signing.outputs.enabled == 'true'
         working-directory: android
@@ -240,14 +222,9 @@ jobs:
       # --------------------------------------------------------
       # Verifica APK gerado
       # --------------------------------------------------------
-      # --------------------------------------------------------
-      # Verifica APK gerado
-      # --------------------------------------------------------
       - name: Verify release APK
         id: verify
         run: |
-          set -e
-
           set -e
 
           echo "Verificando APK de release..."
@@ -256,12 +233,10 @@ jobs:
 
           if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
 
-
             APK="android/app/build/outputs/apk/release/app-release.apk"
             test -s "$APK"
 
             APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
-
 
             test -n "$APKSIGNER"
 
@@ -270,9 +245,7 @@ jobs:
             echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
             echo "apk_name=pj-owl-android-release-signed" >> "$GITHUB_OUTPUT"
 
-
           else
-
 
             APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
             test -s "$APK"
@@ -280,12 +253,8 @@ jobs:
             echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
             echo "apk_name=pj-owl-android-release-unsigned" >> "$GITHUB_OUTPUT"
 
-
           fi
 
-      # --------------------------------------------------------
-      # Armazena APK como artefato
-      # --------------------------------------------------------
       # --------------------------------------------------------
       # Armazena APK como artefato
       # --------------------------------------------------------
@@ -308,10 +277,14 @@ jobs:
       - validate-web
       - android-release
 
-    # Publica em pushes na main ou Pull Requests destinados à main.
+    # Publica em pushes na main ou PRs internos destinados à main.
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.base.ref == 'main' &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
 
     permissions:
       contents: write
