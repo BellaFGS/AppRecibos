@@ -83,7 +83,17 @@ jobs:
           packages: platform-tools
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
-
+      - name: Check signing secrets
+        run: |
+          missing=0
+          [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] && echo "::error::Missing secret: KEYSTORE_BASE64" && missing=1
+          [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] && echo "::error::Missing secret: KEYSTORE_PASSWORD" && missing=1
+          [ -z "${{ secrets.KEY_ALIAS }}" ] && echo "::error::Missing secret: KEY_ALIAS" && missing=1
+          [ -z "${{ secrets.KEY_PASSWORD }}" ] && echo "::error::Missing secret: KEY_PASSWORD" && missing=1
+          if [ "$missing" -eq 1 ]; then
+            echo "Configure os secrets em Settings > Secrets and variables > Actions antes de usar este workflow."
+            exit 1
+          fi
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
@@ -109,11 +119,26 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew --no-daemon assembleDebug
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/app-release.keystore"
+          chmod 600 "$RUNNER_TEMP/app-release.keystore"
+          ls -lh "$RUNNER_TEMP/app-release.keystore"
 
-      - name: Upload debug APK
+      - name: Build release APK (signed)
+        working-directory: android
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/app-release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: "1.0.${{ github.run_number }}"
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
           name: pj-owl-android-debug-apk

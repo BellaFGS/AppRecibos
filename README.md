@@ -1,163 +1,79 @@
 # 🦉 PJ OWL
 
-Aplicação web responsiva desenvolvida para auxiliar autônomos, Microempreendedores Individuais (MEIs), artesãos, prestadores de serviços e pequenos empreendedores no gerenciamento de suas atividades comerciais.
+**Organização simples, gestão inteligente.**
 
-O PJ OWL centraliza funcionalidades de emissão e gerenciamento de recibos, controle de custos e despesas, organização de compromissos, acompanhamento financeiro e armazenamento de informações comerciais.
+O **PJ OWL** é uma aplicação de organização e gestão comercial desenvolvida para trabalhadores autônomos, Microempreendedores Individuais (MEIs), artesãos, prestadores de serviços e pequenos empreendedores.
 
-O projeto utiliza React e TypeScript, com arquitetura modular organizada por funcionalidades e uma camada de persistência local. Sua estrutura também permite o empacotamento para dispositivos Android por meio do Capacitor.
+A plataforma reúne ferramentas para gerenciamento de recibos, controle de custos e despesas, formação de preços, organização de compromissos e acompanhamento financeiro.
 
-O objetivo é oferecer uma ferramenta simples, acessível e funcional, permitindo que pequenos empreendedores organizem suas atividades sem depender continuamente de uma conexão com a internet.
+Desenvolvido com React e TypeScript, o projeto possui arquitetura modular, armazenamento local e suporte à distribuição Android por meio do Capacitor.
+
+Seu objetivo é oferecer uma solução acessível e prática para organizar atividades comerciais em um único ambiente, com funcionalidades que podem ser utilizadas sem depender continuamente de uma conexão com a internet, conforme os recursos disponíveis em cada plataforma.
 
 ---
 
 ## 📌 Funcionalidades
 
-### 1. Dashboard
+### Dashboard
 
-Painel inicial para acompanhamento das informações financeiras e operacionais do negócio.
-
-- Exibição de indicadores financeiros.
+- Indicadores financeiros e operacionais.
 - Acompanhamento de receitas, despesas, custos e resultados.
-- Gráficos com visualização de dados e navegação horizontal.
-- Atalhos para acesso às principais funcionalidades.
-- Formatação visual de números extensos para preservar a responsividade.
-- Indicadores numéricos interativos, permitindo visualizar os valores completos em janelas modais.
-- Organização das informações em uma interface adaptável a diferentes tamanhos de tela.
+- Gráficos e visualizações financeiras.
+- Atalhos para os principais módulos.
 
-### 2. Gerenciamento de recibos
+### Gerenciamento de recibos
 
-Módulo responsável pela criação, visualização, armazenamento e compartilhamento de recibos.
+- Cadastro de clientes e informações comerciais.
+- Emissão e armazenamento de recibos.
+- Identificação por numeração e data.
+- Assinatura do responsável e do cliente.
+- Exportação e compartilhamento de documentos em PDF.
 
-**Cadastro e emissão:**
-- Identificação do cliente.
-- Nome e documento do cliente (CPF/CNPJ).
-- Descrição do serviço ou produto.
-- Valor da transação.
-- Data de emissão.
-- Numeração identificadora do recibo.
-- Validação dos campos necessários para emissão.
-
-**Perfil comercial:**
-- Nome do responsável pelo negócio.
-- Nome fantasia.
-- CPF/CNPJ.
-- Logotipo comercial opcional.
-- Assinatura digitalizada do responsável, opcional.
-
-A emissão de recibos depende do preenchimento dos campos obrigatórios do perfil comercial: nome, nome fantasia e CPF/CNPJ.
-
-**Assinaturas:**
-- Armazenamento da assinatura do responsável.
-- Captura da assinatura do cliente.
-- Incorporação das assinaturas ao documento final.
-
-**Visualização e exportação:**
-- Visualização completa do recibo em janela modal.
-- Exportação do documento em PDF.
-- Compartilhamento do recibo como arquivo PDF, inclusive por aplicativos como WhatsApp.
-- Preservação dos dados e das assinaturas no documento exportado.
-- Padronização dos campos textuais em letras maiúsculas.
-
-O PDF deve conter todas as informações do recibo, incluindo identificação das partes, descrição, valores, data e assinaturas.
-
-### 3. Gerenciamento de custos
-
-Módulo destinado ao controle dos recursos utilizados na produção de produtos ou prestação de serviços.
+### Gerenciamento de custos
 
 - Cadastro de materiais e recursos.
 - Organização por categorias e subcategorias.
-- Registro de custos unitários.
 - Controle de quantidades e unidades de medida.
-- Suporte a unidades de peso, volume, comprimento e quantidade.
-- Suporte a custos relacionados ao tempo de trabalho.
-- Formatação de valores monetários em Real (R$).
-- Entrada de quantidades decimais, como metros, centímetros, gramas, quilogramas, mililitros e litros.
-- Cálculo do custo total dos recursos utilizados.
-- Histórico de custos cadastrados.
-- Visualização detalhada dos registros.
+- Cálculos por peso, volume, comprimento, quantidade e tempo.
+- Histórico e detalhamento dos custos.
 
-A calculadora permite organizar diferentes tipos de custos, auxiliando na formação do preço de venda e na identificação do investimento necessário para produzir um determinado item ou executar um serviço.
+### Calculadora de preços
 
-### 4. Calculadora de preços
+- Cálculo do custo de produção ou execução de serviços.
+- Consideração de materiais e tempo de trabalho.
+- Formação de preços e margens de lucro.
+- Ajuste manual do preço sugerido.
+- Modelos de cobrança por hora, mês, requisição, utilização ou demanda eventual.
 
-Ferramenta para auxiliar na formação de preços de produtos e serviços.
+### Agenda
 
-- Cálculo baseado nos custos de produção.
-- Consideração de materiais e recursos utilizados.
-- Inclusão do tempo de trabalho.
-- Cálculo de custos recorrentes e eventuais.
-- Sugestão de preço de venda.
-- Definição de margem de lucro.
-- Possibilidade de ajustar manualmente o preço sugerido.
-- Exibição do custo original e do resultado calculado.
+- Cadastro, edição e exclusão de compromissos.
+- Organização por data e horário.
+- Descrição e informações dos compromissos.
+- Lembretes e notificações locais no Android.
+- Atualização e cancelamento de notificações.
 
-Também contempla serviços e ferramentas de tecnologia que utilizam modelos de cobrança diferentes, como:
+### Histórico de recibos
 
-- Cobrança mensal.
-- Cobrança por hora.
-- Cobrança por requisição.
-- Cobrança por utilização.
-- Cobrança por demanda ou serviço eventual.
+- Consulta de documentos emitidos.
+- Visualização dos dados e assinaturas.
+- Identificação de clientes, valores e datas.
+- Acesso aos registros anteriores.
 
-### 5. Agenda e notificações
+### Gerenciamento de despesas
 
-Módulo para organização de compromissos e atividades comerciais.
+- Registro de gastos comerciais.
+- Descrição, valores e datas.
+- Consulta e detalhamento de despesas.
+- Histórico de movimentações.
 
-- Cadastro de compromissos.
-- Definição de data e horário.
-- Inclusão de descrição.
-- Edição e exclusão de compromissos.
-- Visualização detalhada dos compromissos em janelas modais.
-- Configuração de lembretes por antecedência em dias e/ou horários.
-- Notificações locais no Android.
-- Reprogramação dos lembretes quando um compromisso é alterado.
-- Cancelamento das notificações quando um compromisso é excluído.
+### Experiência de uso
 
-Os lembretes são locais e não dependem de conexão com a internet após o agendamento.
-
-Na versão web, o sistema informa as limitações de notificações em segundo plano. A experiência de notificações locais é disponibilizada pela integração Android.
-
-### 6. Histórico de recibos
-
-Área destinada à consulta dos recibos emitidos.
-
-- Listagem dos recibos salvos.
-- Identificação do cliente.
-- Número do recibo.
-- Data de emissão.
-- Valor da transação.
-- Visualização completa do recibo em modal.
-- Acesso às informações e assinaturas registradas.
-- Organização dos registros para facilitar consultas posteriores.
-
-### 7. Gerenciamento de despesas
-
-Módulo para registrar e acompanhar os gastos do negócio.
-
-- Cadastro de despesas.
-- Descrição do gasto.
-- Registro de valores e datas.
-- Listagem das despesas cadastradas.
-- Exibição da descrição diretamente nos cards.
-- Visualização do resumo completo em modal.
-- Consulta dos registros anteriores.
-
-### 8. Responsividade e experiência de uso
-
-A interface foi desenvolvida para se adaptar a diferentes dispositivos e resoluções.
-
-Entre os cuidados de interface estão:
-
-- Layout adaptável para computadores, tablets e smartphones.
-- Navegação organizada por módulos.
-- Cards com dimensões controladas.
-- Limitação visual de textos e números extensos com reticências.
-- Preservação dos valores originais nos dados.
-- Exibição das informações completas em janelas modais.
+- Interface responsiva.
+- Suporte a computadores, tablets e smartphones.
 - Formatação monetária brasileira.
-- Padronização dos campos textuais dos recibos em letras maiúsculas.
-
-A limitação visual de números extensos evita que valores muito grandes comprometam a organização dos cards ou provoquem rolagem horizontal indesejada.
+- Persistência local de informações.
+- Funcionamento offline para os recursos locais compatíveis.
 
 ---
 
@@ -166,107 +82,79 @@ A limitação visual de números extensos evita que valores muito grandes compro
 | Tecnologia | Finalidade |
 |---|---|
 | React | Construção da interface |
-| TypeScript | Tipagem estática e segurança do código |
-| Vite | Servidor de desenvolvimento e build |
+| TypeScript | Tipagem estática |
+| Vite | Desenvolvimento e build |
 | CSS | Estilização e responsividade |
 | pnpm | Gerenciamento de dependências |
-| IndexedDB | Persistência local na web |
-| SQLite | Persistência local no Android |
-| Capacitor | Empacotamento e integração nativa |
-| @capacitor/local-notifications | Notificações locais no Android |
+| IndexedDB | Persistência na versão web |
+| SQLite | Persistência na versão Android |
+| Capacitor | Integração com recursos nativos |
 | Vitest | Testes automatizados |
 | Git | Controle de versão |
-| GitHub | Hospedagem e colaboração |
-| GitHub Actions | Automação de integração contínua |
+| GitHub | Hospedagem do projeto |
+| GitHub Actions | Automação de CI/CD |
 
 ---
 
-## 🏗️ Estrutura do projeto
+## 🏗️ Arquitetura
 
-A aplicação utiliza uma organização modular baseada em funcionalidades, separando componentes visuais, regras de negócio, persistência e integração.
+O PJ OWL utiliza uma arquitetura modular, organizada por funcionalidades e responsabilidades.
 
-```text
-src/
-├── app/
-│   └── App.tsx
-│
-├── domain/
-│   ├── models.ts
-│   ├── utils.ts
-│   └── utils.test.ts
-│
-├── features/
-│   ├── agenda/
-│   ├── costs/
-│   ├── dashboard/
-│   ├── expenses/
-│   ├── history/
-│   ├── profile/
-│   └── receipts/
-│
-├── integration/
-│   └── # Cenários integrados e testes
-│
-├── shared/
-│   ├── components/
-│   ├── layout/
-│   └── storage/
-│
-├── main.tsx
-└── styles.css
-```
+A estrutura principal está dividida em:
 
-### Responsabilidade dos diretórios
+- `src/app`: composição principal da aplicação.
+- `src/domain`: modelos e regras de negócio.
+- `src/features`: módulos funcionais.
+- `src/integration`: cenários de integração.
+- `src/shared/components`: componentes reutilizáveis.
+- `src/shared/layout`: navegação e estrutura visual.
+- `src/shared/storage`: persistência e repositórios.
 
-- **app:** composição principal da aplicação e gerenciamento do estado global.
-- **domain:** modelos, regras de negócio e funções independentes da interface.
-- **features:** módulos funcionais da aplicação, organizados por domínio.
-- **integration:** cenários de integração entre funcionalidades e persistência.
-- **shared/components:** componentes visuais reutilizáveis.
-- **shared/layout:** navegação, estrutura visual e elementos de organização da interface.
-- **shared/storage:** persistência, repositórios, migrações e mecanismos de backup.
+A documentação detalhada da arquitetura está disponível em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## ⚙️ Requisitos para desenvolvimento
+## 💻 Requisitos para desenvolvimento
 
 Para executar o projeto localmente, são necessários:
 
-- Node.js 22.16 ou versão LTS compatível com as dependências fixadas no projeto.
-- pnpm na versão especificada em `package.json`, quando houver a propriedade `packageManager`.
+- Node.js 22.16 ou versão compatível com as dependências.
+- pnpm na versão definida no `package.json`.
 - Git.
 - Editor de código de sua preferência.
 
-Para o desenvolvimento Android, também são necessários:
+Para desenvolvimento Android, também são necessários:
 
 - Android Studio.
 - Android SDK.
-- JDK compatível com a versão do Gradle utilizada.
-- Capacitor CLI e dependências nativas configuradas.
+- JDK 21.
+- Dependências do Capacitor.
+
+As configurações específicas do ambiente Android estão documentadas em [docs/ANDROID.md](docs/ANDROID.md).
 
 ---
 
-## 🚀 Instalação e execução
+## 🚀 Instalação
 
-Clone o repositório:
+### 1. Clone o repositório
 
 ```bash
 git clone https://github.com/BellaFGS/AppRecibos.git
 ```
 
-Entre no diretório:
+### 2. Acesse o diretório do projeto
 
 ```bash
 cd AppRecibos
 ```
 
-Instale as dependências:
+### 3. Instale as dependências
 
 ```bash
 pnpm install
 ```
 
-Inicie o servidor de desenvolvimento:
+### 4. Inicie o ambiente de desenvolvimento
 
 ```bash
 pnpm dev
@@ -276,226 +164,51 @@ O Vite disponibilizará o endereço local da aplicação no terminal.
 
 ---
 
-## 🧪 Validação e testes
+## 🧪 Verificação e testes
 
-Antes de enviar alterações ao repositório, execute os comandos na raiz do projeto.
+O projeto disponibiliza comandos para verificação estática, execução de testes e compilação.
 
-### Verificação de tipos
+| Comando | Finalidade |
+|---|---|
+| `pnpm check` | Verificação de tipos |
+| `pnpm test` | Execução dos testes |
+| `pnpm test:watch` | Testes em modo de observação |
+| `pnpm test:ci` | Testes para integração contínua |
+| `pnpm build` | Build de produção |
+| `pnpm preview` | Visualização do build |
 
-```bash
-pnpm check
-```
-
-Verifica possíveis inconsistências de tipagem no TypeScript.
-
-### Testes automatizados
-
-```bash
-pnpm test
-```
-
-Executa a suíte de testes utilizando Vitest.
-
-### Testes em modo de observação
-
-```bash
-pnpm test:watch
-```
-
-Mantém os testes em execução durante o desenvolvimento.
-
-### Testes para integração contínua
-
-```bash
-pnpm test:ci
-```
-
-Executa os testes em modo não interativo, apropriado para pipelines de CI.
-
-### Build de produção
-
-```bash
-pnpm build
-```
-
-Realiza a verificação TypeScript e gera os arquivos de produção.
-
-### Visualização do build
-
-```bash
-pnpm preview
-```
-
-Executa um servidor local para visualizar a versão compilada.
+Para conhecer os procedimentos específicos de validação Android, consulte [docs/ANDROID-TESTING.md](docs/ANDROID-TESTING.md).
 
 ---
 
-## 📐 Padrões de desenvolvimento
+## 📱 Distribuição Android
 
-O projeto segue algumas diretrizes para manter a organização e facilitar a manutenção.
+O PJ OWL utiliza Capacitor para empacotar a aplicação web em um aplicativo Android.
 
-1. Componentes específicos de funcionalidades devem permanecer em `src/features/<dominio>`.
-2. Componentes genéricos e reutilizáveis devem permanecer em `src/shared/components`.
-3. Modelos e regras de negócio independentes da interface devem ficar em `src/domain`.
-4. O acesso aos dados deve ocorrer por meio dos repositórios de `src/shared/storage`.
-5. Componentes não devem acessar diretamente `localStorage`, IndexedDB ou SQLite.
-6. Comportamentos compartilhados devem ser extraídos para funções ou componentes reutilizáveis.
-7. Preferir funções pequenas, nomes explícitos e tipagem específica.
-8. Evitar a utilização de `any` sem necessidade.
-9. Regras de negócio novas devem possuir testes unitários.
-10. Alterações visuais devem preservar a identidade existente e considerar diferentes tamanhos de tela.
-11. Alterações na persistência devem considerar compatibilidade com os dados já armazenados.
-12. Funcionalidades nativas devem ser verificadas em ambiente Android.
+A integração permite utilizar recursos nativos da plataforma, incluindo armazenamento SQLite, notificações locais e compartilhamento de arquivos.
+
+Para instruções de configuração, sincronização, geração de APK e solução de problemas, consulte [docs/ANDROID.md](docs/ANDROID.md).
 
 ---
 
-## 🔬 Estratégia de testes
+## 🔄 Integração contínua
 
-A estratégia de testes contempla diferentes níveis de validação.
+O projeto utiliza GitHub Actions para automatizar etapas de verificação, testes e compilação.
 
-### Testes unitários
+O pipeline contempla:
 
-Devem contemplar:
+- Validação do código.
+- Execução de testes automatizados.
+- Build da aplicação web.
+- Geração de APK de debug.
 
-- Cálculos de custos.
-- Formação de preços.
-- Formatação monetária.
-- Tratamento de quantidades decimais.
-- Validação de CPF/CNPJ.
-- Validação de perfil comercial.
-- Regras de emissão de recibos.
-- Migrações de banco de dados.
-- Regras de notificações.
-
-### Testes de integração
-
-Devem contemplar:
-
-- Finalização e armazenamento de recibos.
-- Persistência por meio dos repositórios.
-- Recuperação de registros.
-- Consulta e filtragem do histórico.
-- Integração entre custos e calculadora de preços.
-- Agendamento e cancelamento de notificações.
-- Exportação de documentos e preservação das assinaturas.
-
-### Testes de interface
-
-Os fluxos prioritários para validação manual ou automatizada são:
-
-- Cadastro e edição do perfil comercial.
-- Emissão de recibos.
-- Validação dos documentos.
-- Assinatura do cliente e responsável.
-- Exportação e compartilhamento de PDFs.
-- Cadastro de custos e despesas.
-- Utilização da calculadora.
-- Cadastro e consulta de compromissos.
-- Visualização dos indicadores do dashboard.
-- Navegação entre os módulos.
-- Responsividade em dispositivos móveis.
-
-A automação E2E de navegador ainda não está configurada. A suíte existente contempla testes unitários e cenários de integração de domínio e persistência.
-
----
-
-## 🗄️ Persistência e armazenamento
-
-O projeto utiliza uma camada de armazenamento isolada para permitir diferentes mecanismos de persistência conforme a plataforma.
-
-### Versão web
-
-Utiliza IndexedDB para armazenamento local dos dados.
-
-### Versão Android
-
-Utiliza SQLite por meio da integração nativa disponibilizada pelo Capacitor.
-
-A camada de armazenamento centraliza operações de leitura, gravação, atualização e exclusão, reduzindo o acoplamento entre os módulos da aplicação e a implementação do banco de dados.
-
-A evolução dessa camada deve considerar:
-
-- Integridade dos registros.
-- Compatibilidade entre versões.
-- Migrações de estrutura.
-- Recuperação dos dados.
-- Backup e restauração.
-- Preservação dos registros existentes durante atualizações.
-
----
-
-## 📱 Aplicativo Android com Capacitor
-
-A interface React é empacotada localmente para Android utilizando Capacitor.
-
-Para adicionar a plataforma Android pela primeira vez:
-
-```bash
-pnpm cap:add:android
-```
-
-Para gerar a versão web e sincronizar os arquivos e plugins nativos:
-
-```bash
-pnpm build
-pnpm cap:sync
-```
-
-O projeto utiliza notificações locais por meio de:
-
-```text
-@capacitor/local-notifications
-```
-
-A integração permite programar, atualizar e cancelar notificações relacionadas aos compromissos cadastrados.
-
-A documentação complementar sobre ambiente, ícones, splash screen, instalação e geração de APK está disponível em:
-
-- `docs/ANDROID.md`
-- `docs/QA_ANDROID_NOTIFICATIONS.md`
-
----
-
-## 🔄 Integração contínua (CI/CD)
-
-O projeto utiliza GitHub Actions para automatizar a validação e a compilação.
-
-O workflow executa verificações em pushes e pull requests direcionados às branches `main` e `develop`.
-
-### Etapas do pipeline
-
-1. Configuração do ambiente Node.js.
-2. Instalação das dependências.
-3. Verificação de tipos TypeScript.
-4. Execução dos testes automatizados.
-5. Build da aplicação web.
-6. Configuração da plataforma Android no runner.
-7. Sincronização do Capacitor.
-8. Compilação do APK de debug.
-9. Publicação do APK como artifact da execução.
-
-A compilação de debug não exige chaves privadas de assinatura.
-
-A distribuição de versões assinadas deve utilizar um processo específico de gerenciamento seguro de credenciais, mantendo chaves e segredos fora do repositório.
-
----
-
-## 📚 Arquitetura e decisões técnicas
-
-A documentação arquitetural e os registros de decisões do projeto estão organizados em:
-
-- `docs/ARQUITETURA.md`: descrição da arquitetura e organização técnica.
-- `docs/decisions/`: registros de decisões arquiteturais.
-- `docs/ANDROID.md`: configuração e distribuição Android.
-- `docs/QA_ANDROID_NOTIFICATIONS.md`: roteiro de validação das notificações Android.
-
-Esses documentos devem ser atualizados sempre que uma mudança relevante modificar a estrutura, as responsabilidades ou as decisões técnicas da aplicação.
+Os detalhes das etapas e configurações estão disponíveis em [docs/CI-CD.md](docs/CI-CD.md).
 
 ---
 
 ## 🎯 Público-alvo
 
-O PJ OWL é direcionado principalmente a:
+O PJ OWL foi desenvolvido principalmente para:
 
 - Trabalhadores autônomos.
 - Microempreendedores Individuais (MEIs).
@@ -503,46 +216,71 @@ O PJ OWL é direcionado principalmente a:
 - Pequenos comerciantes.
 - Confeiteiros e produtores de alimentos.
 - Prestadores de serviços.
-- Profissionais da área de tecnologia.
-- Pequenos negócios que precisam controlar custos e precificar serviços.
-
-A proposta é reunir ferramentas essenciais de organização comercial em uma única aplicação, reduzindo a necessidade de utilizar diferentes planilhas e aplicativos para tarefas cotidianas.
+- Profissionais de tecnologia.
+- Pequenos negócios que precisam organizar custos, preços e atividades comerciais.
 
 ---
 
-## 📌 Estado de implementação
+## 📚 Documentação
 
-O projeto possui uma estrutura modular em React e TypeScript, com funcionalidades organizadas por domínio e uma camada de persistência local preparada para diferentes plataformas.
+A documentação do projeto está organizada em arquivos específicos para facilitar a consulta e evitar a duplicação de informações.
 
-A evolução contempla:
-
-- Organização dos módulos funcionais.
-- Centralização da navegação.
-- Controle financeiro e operacional.
-- Gerenciamento de recibos e documentos.
-- Formatação e validação de dados.
-- Melhorias de responsividade.
-- Persistência local.
-- Integração com Android.
-- Notificações locais.
-- Testes automatizados.
-- Pipeline de integração contínua.
-
-As funcionalidades nativas e os fluxos de exportação devem ser validados em ambiente de execução antes da distribuição de uma nova versão.
+| Documento | Descrição |
+|---|---|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Diretrizes e procedimentos para contribuição. |
+| [LICENSE](LICENSE) | Licença e permissões de utilização do código-fonte. |
+| [COPYRIGHT.md](COPYRIGHT.md) | Direitos autorais, autoria e propriedade intelectual. |
+| [TERMS_OF_USE.md](TERMS_OF_USE.md) | Condições gerais de utilização. |
+| [SECURITY.md](SECURITY.md) | Política de segurança e comunicação de vulnerabilidades. |
+| [docs/INDEX.md](docs/INDEX.md) | Índice da documentação técnica. |
 
 ---
 
-## 🔮 Melhorias futuras
+## 🤝 Contribuição
 
-Algumas possibilidades de evolução do projeto incluem:
+O PJ OWL é um projeto colaborativo e recebe contribuições para sua evolução.
 
-- Aprimoramento da geração e compartilhamento de recibos em PDF.
-- Melhorias na experiência de backup e restauração.
-- Ampliação da cobertura de testes automatizados.
-- Configuração de testes E2E.
-- Aprimoramento dos relatórios financeiros.
-- Filtros avançados no histórico.
-- Sincronização opcional entre dispositivos.
-- Melhorias de acessibilidade.
-- Publicação de versão assinada para distribuição Android.
+Correções, melhorias, sugestões e novas funcionalidades são bem-vindas, desde que respeitem as diretrizes de desenvolvimento, os critérios de qualidade e as condições estabelecidas para o projeto.
 
+Antes de contribuir, consulte o [CONTRIBUTING.md](CONTRIBUTING.md) para conhecer os procedimentos e orientações aplicáveis.
+
+---
+
+## 📄 Licença e direitos autorais
+
+O PJ OWL possui código-fonte disponibilizado sob uma licença própria, que permite o uso, estudo, modificação e redistribuição gratuita, desde que respeitadas as condições estabelecidas no arquivo [LICENSE](LICENSE).
+
+O projeto é atualmente disponibilizado sem finalidade lucrativa. Entretanto, sua responsável poderá adotar modelos de sustentabilidade financeira e distribuição comercial próprios no futuro, respeitando os direitos autorais e as autorizações aplicáveis às contribuições de terceiros.
+
+**Atenção:** a licença permite que pessoas e empresas utilizem o PJ OWL gratuitamente em suas próprias atividades comerciais, mas não autoriza terceiros a comercializar o aplicativo, cobrar pelo acesso, oferecer versões pagas ou explorar comercialmente sua distribuição ou hospedagem.
+
+Por possuir restrições à exploração comercial por terceiros, o PJ OWL é um projeto de código-fonte disponível (*source-available*), não uma distribuição sob licença Open Source aprovada pela OSI.
+
+Para informações detalhadas sobre permissões, restrições, autoria e propriedade intelectual, consulte:
+
+- [LICENSE](LICENSE)
+- [COPYRIGHT.md](COPYRIGHT.md)
+- [TERMS_OF_USE.md](TERMS_OF_USE.md)
+
+---
+
+## 👥 Colaboradores
+
+O desenvolvimento do PJ OWL conta com a participação dos seguintes colaboradores:
+
+- [Isabella Ferreira Gomes da Silva](https://github.com/BellaFGS)
+- [Matheus Cuero Silva](https://github.com/Oroboni)
+- [Thomas Lourenço Lopes de Castro](https://github.com/Thomas-1610)
+
+A identificação dos colaboradores representa o reconhecimento de suas contribuições ao projeto. Para informações sobre autoria e direitos relacionados ao código-fonte, consulte [COPYRIGHT.md](COPYRIGHT.md).
+
+---
+
+## 🔗 Links do projeto
+
+- **Repositório oficial:** [github.com/BellaFGS/AppRecibos](https://github.com/BellaFGS/AppRecibos)
+- **Portfólio da responsável pelo projeto:** [AllebStrix](https://bellafgs.github.io/Portifolio_Bella/)
+
+---
+
+**PJ OWL | Organização simples, gestão inteligente.**
