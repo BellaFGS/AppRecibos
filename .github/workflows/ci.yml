@@ -7,16 +7,31 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
+
+
   pull_request:
     branches: [main, develop]
 
+# Permissão padrão: somente leitura.
 permissions:
   contents: read
 
 jobs:
+  # ============================================================
+  # 1. VALIDACAO WEB
+  # ============================================================
+  # ============================================================
+  # 1. VALIDACAO WEB
+  # ============================================================
   validate-web:
     name: Typecheck, tests and web build
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -53,10 +68,28 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # ============================================================
+  # 2. COMPILACAO ANDROID
+  # ============================================================
+  # ============================================================
+  # 2. COMPILACAO ANDROID
+  # ============================================================
   android-release:
     name: Android APK
     runs-on: ubuntu-latest
     needs: validate-web
+
+    permissions:
+      contents: read
+
+    outputs:
+      apk_artifact_name: ${{ steps.verify.outputs.apk_name }}
+
+    permissions:
+      contents: read
+
+    outputs:
+      apk_artifact_name: ${{ steps.verify.outputs.apk_name }}
 
     steps:
       - name: Checkout
@@ -111,6 +144,26 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
+      # --------------------------------------------------------
+      # Verifica se a execução exige uma Release oficial
+      # --------------------------------------------------------
+      - name: Check release conditions
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/main" ]] ||
+             [[ "$EVENT_NAME" == "pull_request" && "$PR_BASE" == "main" ]]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "required=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --------------------------------------------------------
+      # Verifica secrets de assinatura
+      # --------------------------------------------------------
       - name: Check signing secrets
         id: signing
         env:
@@ -123,12 +176,29 @@ jobs:
              [ -n "$KEYSTORE_PASSWORD" ] &&
              [ -n "$KEY_ALIAS" ] &&
              [ -n "$KEY_PASSWORD" ]; then
+
+
             echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "Secrets de assinatura indisponíveis. Será gerado APK sem assinatura."
+            echo "Secrets de assinatura indisponíveis."
           fi
 
+      # --------------------------------------------------------
+      # Exige assinatura para publicação oficial
+      # --------------------------------------------------------
+      - name: Require signed APK for official release
+        if: steps.release.outputs.required == 'true' && steps.signing.outputs.enabled != 'true'
+        run: |
+          echo "ERRO: A publicação oficial exige um APK assinado."
+          echo "Configure os secrets de assinatura do Android."
+          exit 1
+
+      # --------------------------------------------------------
+      # Decodifica keystore
+      # --------------------------------------------------------
       - name: Decode keystore
         if: steps.signing.outputs.enabled == 'true'
         env:
@@ -138,6 +208,12 @@ jobs:
           chmod 600 "$RUNNER_TEMP/app-release.keystore"
           test -s "$RUNNER_TEMP/app-release.keystore"
 
+      # --------------------------------------------------------
+      # Compila APK assinado
+      # --------------------------------------------------------
+      # --------------------------------------------------------
+      # Compila APK assinado
+      # --------------------------------------------------------
       - name: Build release APK (signed)
         if: steps.signing.outputs.enabled == 'true'
         working-directory: android
@@ -150,6 +226,9 @@ jobs:
           VERSION_NAME: "1.0.${{ github.run_number }}"
         run: ./gradlew --no-daemon assembleRelease
 
+      # --------------------------------------------------------
+      # APK sem assinatura para builds não oficiais
+      # --------------------------------------------------------
       - name: Build release APK (unsigned)
         if: steps.signing.outputs.enabled != 'true'
         working-directory: android
@@ -158,32 +237,58 @@ jobs:
           VERSION_NAME: "1.0.${{ github.run_number }}"
         run: ./gradlew --no-daemon assembleRelease
 
+      # --------------------------------------------------------
+      # Verifica APK gerado
+      # --------------------------------------------------------
+      # --------------------------------------------------------
+      # Verifica APK gerado
+      # --------------------------------------------------------
       - name: Verify release APK
         id: verify
         run: |
+          set -e
+
+          set -e
+
           echo "Verificando APK de release..."
 
           find android/app/build/outputs/apk -type f -name "*.apk"
 
           if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
+
+
             APK="android/app/build/outputs/apk/release/app-release.apk"
             test -s "$APK"
 
             APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+
+
             test -n "$APKSIGNER"
 
             "$APKSIGNER" verify --verbose "$APK"
 
             echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
             echo "apk_name=pj-owl-android-release-signed" >> "$GITHUB_OUTPUT"
+
+
           else
+
+
             APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
             test -s "$APK"
 
             echo "apk_path=$APK" >> "$GITHUB_OUTPUT"
             echo "apk_name=pj-owl-android-release-unsigned" >> "$GITHUB_OUTPUT"
+
+
           fi
 
+      # --------------------------------------------------------
+      # Armazena APK como artefato
+      # --------------------------------------------------------
+      # --------------------------------------------------------
+      # Armazena APK como artefato
+      # --------------------------------------------------------
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
@@ -191,3 +296,100 @@ jobs:
           path: ${{ steps.verify.outputs.apk_path }}
           if-no-files-found: error
           retention-days: 14
+
+  # ============================================================
+  # 3. PUBLICACAO AUTOMATICA DA GITHUB RELEASE
+  # ============================================================
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+
+    needs:
+      - validate-web
+      - android-release
+
+    # Publica em pushes na main ou Pull Requests destinados à main.
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # Baixa aplicação web
+      # --------------------------------------------------------
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: pj-owl-web-dist
+          path: release-assets/web
+
+      # --------------------------------------------------------
+      # Baixa APK Android
+      # --------------------------------------------------------
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.android-release.outputs.apk_artifact_name }}
+          path: release-assets/android
+
+      # --------------------------------------------------------
+      # Prepara arquivos para publicação
+      # --------------------------------------------------------
+      - name: Prepare release files
+        run: |
+          set -e
+
+          mkdir -p release-assets
+
+          echo "Compactando aplicação web..."
+
+          cd release-assets/web
+          zip -r ../PJ-OWL-Web.zip .
+          cd ../..
+
+          echo "Preparando APK Android..."
+
+          APK=$(find release-assets/android -type f -name "*.apk" -print -quit)
+
+          if [ -z "$APK" ]; then
+            echo "Erro: APK não encontrado."
+            exit 1
+          fi
+
+          cp "$APK" release-assets/PJ-OWL-Android.apk
+
+          echo "Arquivos preparados:"
+          ls -lh release-assets/
+
+          test -s release-assets/PJ-OWL-Web.zip
+          test -s release-assets/PJ-OWL-Android.apk
+
+      # --------------------------------------------------------
+      # Publica GitHub Release
+      # --------------------------------------------------------
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+          tag_name: v1.0.${{ github.run_number }}
+          name: PJ OWL v1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+
+          generate_release_notes: true
+          make_latest: true
+          draft: false
+          prerelease: false
+
+          overwrite_files: true
+          fail_on_unmatched_files: true
+
+          files: |
+            release-assets/PJ-OWL-Web.zip
+            release-assets/PJ-OWL-Android.apk
