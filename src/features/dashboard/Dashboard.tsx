@@ -145,7 +145,7 @@ export function Dashboard({
       <section className="dashboard-grid">
         {/* Filtro de período */}
       <div className="period-switch">
-        <span>Visão financeira</span>
+        <span>Filtrar Dados |</span>
 
         {(['week', 'month', 'year'] as const).map((value) => (
           <button

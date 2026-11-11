@@ -94,12 +94,30 @@ export function validateDocument(value: string): boolean {
     : validateCnpj(normalized);
 }
 
-/** Documento é opcional. Retorna mensagem somente quando foi preenchido e é inválido. */
-export function getOptionalDocumentError(value: string): string | null {
-  if (!normalizeDocument(value)) return null;
-  const kind = getDocumentKind(value);
-  if (kind === 'cpf' && normalizeDocument(value).length !== 11) return 'CPF incompleto. Informe os 11 dígitos.';
-  if (kind === 'cnpj' && normalizeDocument(value).length !== 14) return 'CNPJ incompleto. Informe as 12 posições e os 2 dígitos verificadores.';
-  if (!validateDocument(value)) return `${kind === 'cpf' ? 'CPF' : 'CNPJ'} inválido. Confira os caracteres e os dígitos verificadores.`;
+/**
+ * Documento obrigatório.
+ * Retorna mensagem de erro quando estiver vazio, incompleto ou inválido.
+ */
+export function getDocumentError(value: string): string | null {
+  const normalized = normalizeDocument(value);
+
+  if (!normalized) {
+    return 'O CPF/CNPJ do cliente é obrigatório.';
+  }
+
+  const kind = getDocumentKind(normalized);
+
+  if (kind === 'cpf' && normalized.length !== 11) {
+    return 'CPF incompleto. Informe os 11 dígitos.';
+  }
+
+  if (kind === 'cnpj' && normalized.length !== 14) {
+    return 'CNPJ incompleto. Informe as 12 posições e os 2 dígitos verificadores.';
+  }
+
+  if (!validateDocument(normalized)) {
+    return `${kind === 'cpf' ? 'CPF' : 'CNPJ'} inválido. Confira os caracteres e os dígitos verificadores.`;
+  }
+
   return null;
 }
