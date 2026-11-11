@@ -19,6 +19,7 @@ import {
 
 import { EmptyState, Icon } from '../../shared/components/ui';
 import { PageTitle } from '../../shared/layout/AppLayout';
+import { Modal } from '../../shared/components/Modal';
 
 interface DashboardProps {
   profile: BusinessProfile;
@@ -36,6 +37,7 @@ export function Dashboard({
   navigate,
 }: DashboardProps) {
   const [period, setPeriod] = useState<DashboardPeriod>('month');
+  const [selectedMetric, setSelectedMetric] = useState<{ label: string; value: string } | null>(null);
 
   // Calcula as movimentações reais conforme o período selecionado.
   const series = useMemo(
@@ -106,6 +108,7 @@ export function Dashboard({
           value={money(revenue)}
           tone="lavender"
           note={revenue ? 'recibos finalizados' : 'ainda sem receitas'}
+          onClick={() => setSelectedMetric({ label: 'Receitas', value: money(revenue) })}
         />
 
         <MetricCard
@@ -114,6 +117,7 @@ export function Dashboard({
           value={money(spent)}
           tone="coral"
           note={spent ? 'valores registrados' : 'nenhuma despesa'}
+          onClick={() => setSelectedMetric({ label: 'Despesas', value: money(spent) })}
         />
 
         <MetricCard
@@ -122,6 +126,7 @@ export function Dashboard({
           value={money(revenue - spent)}
           tone="mint"
           note="receitas menos despesas"
+          onClick={() => setSelectedMetric({ label: 'Resultado líquido', value: money(revenue - spent) })}
         />
 
         <MetricCard
@@ -130,6 +135,7 @@ export function Dashboard({
           value={String(finalizedReceipts.length)}
           tone="yellow"
           note="documentos finalizados"
+          onClick={() => setSelectedMetric({ label: 'Recibos emitidos', value: String(finalizedReceipts.length) })}
         />
       </section>
 
@@ -219,6 +225,8 @@ Saídas: ${money(bucket.expenses)}`}
               </div>
             </div>
           </div>
+
+          <p className="chart-scroll-hint">↔ Deslize o gráfico para os lados para visualizar todos os dados.</p>
 
           {/* Mensagem para períodos sem movimentação */}
           {maxValue === 0 && (
@@ -351,6 +359,18 @@ Saídas: ${money(bucket.expenses)}`}
               <Icon name="chevron" size={16} />
             </button>
 
+            <button onClick={() => navigate('history')}>
+              <span className="quick-icon lilac"><Icon name="history" /></span>
+              <span>Ver histórico de recibos</span>
+              <Icon name="chevron" size={16} />
+            </button>
+
+            <button onClick={() => navigate('expenses')}>
+              <span className="quick-icon coral"><Icon name="wallet" /></span>
+              <span>Consultar despesas</span>
+              <Icon name="chevron" size={16} />
+            </button>
+
             <button onClick={() => navigate('profile')}>
               <span className="quick-icon yellow">
                 <Icon name="user" />
@@ -369,6 +389,14 @@ Saídas: ${money(bucket.expenses)}`}
         <Icon name="lock" size={14} />
         Seus dados ficam neste dispositivo. PJ OWL funciona sem depender de internet.
       </p>
+      <Modal
+        open={!!selectedMetric}
+        onOpenChange={(open) => { if (!open) setSelectedMetric(null); }}
+        title={selectedMetric?.label || 'Valor completo'}
+        description="Valor integral do indicador do dashboard"
+      >
+        {selectedMetric && <div className="dashboard-metric-detail">{selectedMetric.value}</div>}
+      </Modal>
     </div>
   );
 }
@@ -380,15 +408,17 @@ export function MetricCard({
   value,
   note,
   tone,
+  onClick,
 }: {
   icon: IconName;
   label: string;
   value: string;
   note: string;
   tone: string;
+  onClick: () => void;
 }) {
   return (
-    <div className={`metric-card tone-${tone}`}>
+    <button type="button" className={`metric-card tone-${tone} metric-card-button`} onClick={onClick} aria-label={`${label}: ${value}. Clique para ver o valor completo.`}>
       <div className="metric-icon">
         <Icon name={icon} />
       </div>
@@ -398,6 +428,6 @@ export function MetricCard({
       <strong>{value}</strong>
 
       <small>{note}</small>
-    </div>
+    </button>
   );
 }

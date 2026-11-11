@@ -4,6 +4,7 @@ import { money, parseMoney, shortDate, today, uid } from '../../domain/utils';
 import { Button, EmptyState, Field, Icon } from '../../shared/components/ui';
 import { formatCentsForInput, formatMoneyInput } from '../../shared/validation/numeric';
 import { PageTitle } from '../../shared/layout/AppLayout';
+import { Modal } from '../../shared/components/Modal';
 
 type Props = {
   expenses: Expense[];
@@ -16,6 +17,7 @@ export function Expenses({ expenses, setExpenses, setDeleteTarget, notify }: Pro
   const emptyForm = () => ({ description: '', category: 'Materiais', amount: '', date: today(), notes: '' });
   const [expenseForm, setExpenseForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
   const addExpense = (event: React.FormEvent) => {
     event.preventDefault();
@@ -64,14 +66,15 @@ export function Expenses({ expenses, setExpenses, setDeleteTarget, notify }: Pro
           {expenses.length ? <div className="expense-list">{expenses.map((item) => (
             <div className="expense-item" key={item.id}>
               <span className="expense-icon"><Icon name="wallet" size={17} /></span>
-              <div><strong>{item.description}</strong><span>{item.category} · {shortDate(item.date)}</span></div>
-              <strong className="expense-amount">{money(item.amount)}</strong>
+              <div className="expense-main-copy"><strong title={item.description}>{item.description}</strong><span>{item.category} · {shortDate(item.date)}</span><small className="expense-description" title={item.notes || item.description}>{item.notes || item.description}</small></div>
+              <button className="expense-amount expense-view-button" type="button" onClick={() => setSelectedExpense(item)} title="Ver resumo completo">{money(item.amount)}</button>
               <button className="mini-action" type="button" aria-label={`Editar ${item.description}`} onClick={() => { setEditingId(item.id); setExpenseForm({ description: item.description, category: item.category, amount: formatCentsForInput(item.amount), date: item.date, notes: item.notes || '' }); document.querySelector<HTMLInputElement>('input[placeholder^="Ex."]')?.focus(); }}><Icon name="edit" size={15} /></button>
               <button className="mini-delete" type="button" aria-label={`Excluir ${item.description}`} onClick={() => setDeleteTarget({ type: 'expense', id: item.id })}><Icon name="trash" size={15} /></button>
             </div>
           ))}</div> : <EmptyState title="Nenhuma despesa registrada" text="Anote os gastos reais para enxergar seu resultado líquido." action="Registrar despesa" onAction={() => document.querySelector<HTMLInputElement>('input[placeholder^="Ex."]')?.focus()} mood="thinking" />}
         </div>
       </section>
+      <Modal open={!!selectedExpense} onOpenChange={(open) => { if (!open) setSelectedExpense(null); }} title="Resumo da despesa" description={selectedExpense?.description}><div className="expense-summary">{selectedExpense && <><strong className="expense-summary-value">{money(selectedExpense.amount)}</strong><p><b>Descrição:</b> {selectedExpense.description}</p><p><b>Categoria:</b> {selectedExpense.category}</p><p><b>Data:</b> {shortDate(selectedExpense.date)}</p><p><b>Observações:</b> {selectedExpense.notes || 'Nenhuma observação registrada.'}</p></>}</div></Modal>
     </div>
   );
 }
