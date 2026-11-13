@@ -11,6 +11,7 @@ import { shareFile } from '../../shared/native/shareFile';
 import { Modal } from '../../shared/components/Modal';
 import { formatDocument } from '../../shared/validation/document';
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export function History({
   receipts,
@@ -121,6 +122,7 @@ export function History({
   );
 }
 
+
 export function ReceiptRow({
   receipt,
   onDelete,
@@ -132,29 +134,104 @@ export function ReceiptRow({
   onView: () => void;
   notify: (message: string) => void;
 }) {
-  const exportPdf = async () => {
-    const popup = window.open('', '_blank', 'width=760,height=900');
+  // Exportação do recibo como JPG
+  const exportJpg = async () => {
+    const iframe = document.createElement('iframe');
 
-    if (!popup) {
-      notify('Permita pop-ups para exportar o PDF.');
-      return;
-    }
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-10000px';
+    iframe.style.top = '0';
+    iframe.style.width = '900px';
+    iframe.style.height = '1200px';
+    iframe.style.border = '0';
+
+    document.body.appendChild(iframe);
 
     try {
-      popup.document.write(receiptPrintHtml(receipt));
-      popup.document.close();
+      const doc = iframe.contentDocument;
 
-      // Aguarda o carregamento da logo e das assinaturas.
-      await waitForImages(popup.document);
+      if (!doc) {
+        throw new Error('Não foi possível renderizar o recibo.');
+      }
 
-      popup.focus();
-      popup.print();
+      doc.open();
+      doc.write(receiptPrintHtml(receipt));
+      doc.close();
+
+      // Aguarda o carregamento das imagens.
+      await waitForImages(doc);
+
+      // Aguarda o carregamento das fontes.
+      if (doc.fonts) {
+        await doc.fonts.ready;
+      }
+
+      // Calcula a altura total do recibo.
+      const height = Math.max(
+        doc.body.scrollHeight,
+        doc.documentElement.scrollHeight
+      );
+
+      iframe.style.height = `${height + 50}px`;
+
+      // Aguarda a atualização do layout.
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
+
+      // Renderiza o recibo em alta resolução.
+      const canvas = await html2canvas(doc.body, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 900,
+        windowHeight: height + 50,
+        scrollX: 0,
+        scrollY: 0,
+      });
+
+      // Converte o Canvas para JPG.
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (result) => {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(new Error('Falha ao gerar a imagem JPG.'));
+            }
+          },
+          'image/jpeg',
+          0.95
+        );
+      });
+
+      // Cria o download.
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      link.href = url;
+      link.download = `${receipt.id}.jpg`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      // Libera a memória após o início do download.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      notify('Recibo JPG exportado com sucesso!');
     } catch (error) {
-      popup.close();
-      notify('Não foi possível exportar o recibo.');
+      console.error('Erro ao exportar recibo JPG:', error);
+
+      notify('Não foi possível exportar o recibo como JPG.');
+    } finally {
+      iframe.remove();
     }
   };
 
+  // Compartilhamento do recibo como PDF.
   const share = async () => {
     try {
       const pdf = await generateReceiptPdf(receipt);
@@ -211,9 +288,9 @@ export function ReceiptRow({
 
         <button
           type="button"
-          onClick={() => void exportPdf()}
-          title="Exportar PDF"
-          aria-label="Exportar PDF"
+          onClick={() => void exportJpg()}
+          title="Exportar JPG"
+          aria-label="Exportar JPG"
         >
           <Icon name="download" size={16} />
         </button>
@@ -240,6 +317,7 @@ export function ReceiptRow({
     </div>
   );
 }
+
 
 export function ReceiptDetails({ receipt }: { receipt: Receipt }) {
   return (
