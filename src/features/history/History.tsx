@@ -234,6 +234,7 @@ export function History({
           },
         });
 
+        
         console.log('JPG salvo:', result);
       } else {
         // Exportação pelo navegador.
