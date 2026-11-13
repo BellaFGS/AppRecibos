@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { IconName } from '../../domain/models';
 import { formatMoneyInput } from '../validation/numeric';
+
 
 export function Icon({ name, size = 19 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
@@ -108,6 +109,101 @@ export function SignaturePad({ label, value, onChange }: { label: string; value:
   const stop = () => { if (!drawing.current) return; drawing.current = false; const canvas = canvasRef.current; if (canvas) onChange(canvas.toDataURL('image/png')); };
   const clear = () => { const canvas = canvasRef.current; const context = canvas?.getContext('2d'); if (canvas && context) { context.clearRect(0, 0, canvas.width, canvas.height); onChange(''); } };
   return <div className="signature-field"><div className="signature-label"><span>{label}</span><button type="button" onClick={clear}>Limpar</button></div><canvas ref={canvasRef} width={640} height={190} onPointerDown={start} onPointerMove={draw} onPointerUp={stop} onPointerLeave={stop} /><p>Desenhe com o dedo ou mouse dentro da área.</p></div>;
+}
+
+export function SignatureEditor({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const openEditor = () => {
+    setDraft(value);
+    setOpen(true);
+  };
+
+  const cancel = () => {
+    setDraft(value);
+    setOpen(false);
+  };
+
+  const confirm = () => {
+    onChange(draft);
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <div className="signature-field">
+        <div className="signature-label">
+          <span>{label}</span>
+          <span>Somente visualização</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={openEditor}
+          className="signature-locked"
+          aria-label={`Editar ${label}`}
+        >
+          {value ? (
+            <img src={value} alt={label} />
+          ) : (
+            <span>
+              <Icon name="signature" size={24} />
+              Clique para adicionar sua assinatura
+            </span>
+          )}
+          <span className="signature-edit-hint">
+            <Icon name="edit" size={15} />
+            Editar assinatura
+          </span>
+        </button>
+
+        <p>Clique na área para desenhar ou alterar sua assinatura.</p>
+      </div>
+
+      {open && (
+        <div className="modal-backdrop">
+          <div
+            className="modal signature-editor-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="signature-editor-title"
+          >
+            <div className="modal-icon">
+              <Icon name="signature" />
+            </div>
+
+            <h2 id="signature-editor-title">Editar assinatura</h2>
+            <p>Desenhe sua assinatura usando o dedo ou o mouse.</p>
+
+            <SignaturePad
+              label={label}
+              value={draft}
+              onChange={setDraft}
+            />
+
+            <div className="modal-actions">
+              <Button variant="ghost" onClick={cancel}>
+                Cancelar
+              </Button>
+
+              <Button onClick={confirm} icon="check">
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 export function ConfirmDialog({ title, text, onCancel, onConfirm, confirmLabel = 'Excluir', confirmDisabled = false }: { title: string; text: string; onCancel: () => void; onConfirm: () => void; confirmLabel?: string; confirmDisabled?: boolean }) { return <div className="modal-backdrop"   ><div className="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title"><div className="modal-icon"><Icon name="trash" /></div><h2 id="confirm-dialog-title">{title}</h2><p>{text}</p><div className="modal-actions"><Button variant="ghost" onClick={onCancel} disabled={confirmDisabled}>Cancelar</Button><Button variant="danger" onClick={onConfirm} disabled={confirmDisabled}>{confirmLabel}</Button></div></div></div>; }
