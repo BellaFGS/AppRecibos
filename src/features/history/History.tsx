@@ -202,7 +202,19 @@ export function History({
       }
 
       // Gera diretamente uma imagem JPEG em Base64.
-      const base64Data = canvas.toDataURL('image/jpeg', 0.92);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+      // Remove o cabeçalho data:image/jpeg;base64,
+      const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1).trim();
+
+      if (!base64Data || base64Data.length < 100) {
+        throw new Error('A imagem JPG gerada está vazia ou inválida.');
+      }
+
+      // Confere se o conteúdo possui caracteres Base64 válidos.
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64Data)) {
+        throw new Error('Os dados da imagem não estão em Base64 válido.');
+      }
 
       if (!base64Data || !base64Data.startsWith('data:image/jpeg;base64,')) {
         throw new Error('Não foi possível converter o recibo para JPG.');
@@ -222,6 +234,7 @@ export function History({
           },
         });
 
+        
         console.log('JPG salvo:', result);
       } else {
         // Exportação pelo navegador.
