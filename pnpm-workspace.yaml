@@ -1,2 +1,4 @@
 allowBuilds:
   core-js: true
+minimumReleaseAgeExclude:
+  - '@capgo/capacitor-file-sharer@8.1.18'
