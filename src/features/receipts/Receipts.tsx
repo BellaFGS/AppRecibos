@@ -2,7 +2,7 @@
 import type { BusinessProfile, Currency, PaymentMethod, Receipt, Section } from '../../domain/models';
 import { amountToWords } from '../../domain/moneyWords';
 import { defaultReceiptForm, longDate, money, parseMoney, today } from '../../domain/utils';
-import { Button, Field, Mascot, SignaturePad } from '../../shared/components/ui';
+import { Button, Field, Mascot, SignatureEditor } from '../../shared/components/ui';
 import { formatMoneyInput } from '../../shared/validation/numeric';
 import { formatDocument, sanitizeDocumentInput, getDocumentError } from '../../shared/validation/document';
 import { Modal } from '../../shared/components/Modal';
@@ -128,7 +128,19 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
         <div className="card signature-card">
           <div className="card-heading"><div><span className="section-kicker">Assinaturas</span><h2>Confirme as duas partes</h2></div><span className="step-chip">2 de 2</span></div>
           <p className="muted">A assinatura desenhada aqui é eletrônica simples. Ela não equivale automaticamente a uma assinatura qualificada ICP-Brasil.</p>
-          <div className="signature-grid"><SignaturePad label="Assinatura do prestador" value={providerSignature} onChange={setProviderSignature} /><SignaturePad label="Assinatura do cliente" value={clientSignature} onChange={setClientSignature} /></div>
+          <div className="signature-grid">
+            <SignatureEditor
+              label="Assinatura do prestador"
+              value={providerSignature}
+              onChange={setProviderSignature}
+            />
+
+            <SignatureEditor
+              label="Assinatura do cliente"
+              value={clientSignature}
+              onChange={setClientSignature}
+            />
+          </div>
           <Button onClick={finalize} icon="lock">Finalizar recibo</Button>
         </div>
       </div>
