@@ -12,6 +12,8 @@ import { Modal } from '../../shared/components/Modal';
 import { formatDocument } from '../../shared/validation/document';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Capacitor } from '@capacitor/core';
+import { FileSharer } from '@capgo/capacitor-file-sharer';
 
 export function History({
   receipts,
@@ -123,17 +125,17 @@ export function History({
 }
 
 
-export function ReceiptRow({
-  receipt,
-  onDelete,
-  onView,
-  notify,
-}: {
-  receipt: Receipt;
-  onDelete: () => void;
-  onView: () => void;
-  notify: (message: string) => void;
-}) {
+  export function ReceiptRow({
+    receipt,
+    onDelete,
+    onView,
+    notify,
+  }: {
+    receipt: Receipt;
+    onDelete: () => void;
+    onView: () => void;
+    notify: (message: string) => void;
+  }) {
   // Exportação do recibo como JPG
   const exportJpg = async () => {
     const iframe = document.createElement('iframe');
@@ -158,15 +160,12 @@ export function ReceiptRow({
       doc.write(receiptPrintHtml(receipt));
       doc.close();
 
-      // Aguarda o carregamento das imagens.
       await waitForImages(doc);
 
-      // Aguarda o carregamento das fontes.
       if (doc.fonts) {
         await doc.fonts.ready;
       }
 
-      // Calcula a altura total do recibo.
       const height = Math.max(
         doc.body.scrollHeight,
         doc.documentElement.scrollHeight
@@ -174,12 +173,10 @@ export function ReceiptRow({
 
       iframe.style.height = `${height + 50}px`;
 
-      // Aguarda a atualização do layout.
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => resolve());
       });
 
-      // Renderiza o recibo em alta resolução.
       const canvas = await html2canvas(doc.body, {
         scale: 2,
         useCORS: true,
@@ -192,7 +189,6 @@ export function ReceiptRow({
         scrollY: 0,
       });
 
-      // Converte o Canvas para JPG.
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(
           (result) => {
@@ -207,25 +203,63 @@ export function ReceiptRow({
         );
       });
 
-      // Cria o download.
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const filename = `${receipt.id}.jpg`;
 
-      link.href = url;
-      link.download = `${receipt.id}.jpg`;
+      // Aplicativo Android/iOS via Capacitor
+      if (Capacitor.isNativePlatform()) {
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
 
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+          reader.onloadend = () => {
+            const result = reader.result;
 
-      // Libera a memória após o início do download.
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+            if (typeof result !== 'string') {
+              reject(new Error('Falha ao converter imagem.'));
+              return;
+            }
+
+            resolve(result);
+          };
+
+          reader.onerror = () => {
+            reject(new Error('Falha ao ler imagem.'));
+          };
+
+          reader.readAsDataURL(blob);
+        });
+
+        await FileSharer.save({
+          filename,
+          contentType: 'image/jpeg',
+          base64Data,
+          android: {
+            saveDirectory: 'downloads',
+            relativePath: 'Download/PJ OWL',
+          },
+        });
+
+      } else {
+        // Navegador convencional
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = filename;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+      }
 
       notify('Recibo JPG exportado com sucesso!');
+
     } catch (error) {
       console.error('Erro ao exportar recibo JPG:', error);
 
       notify('Não foi possível exportar o recibo como JPG.');
+
     } finally {
       iframe.remove();
     }
