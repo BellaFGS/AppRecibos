@@ -137,15 +137,19 @@ export function History({
     notify: (message: string) => void;
   }) {
   // Exportação do recibo como JPG
+
   const exportJpg = async () => {
     const iframe = document.createElement('iframe');
 
     iframe.style.position = 'fixed';
-    iframe.style.left = '-10000px';
+    iframe.style.left = '0';
     iframe.style.top = '0';
     iframe.style.width = '900px';
     iframe.style.height = '1200px';
     iframe.style.border = '0';
+    iframe.style.opacity = '0.01';
+    iframe.style.zIndex = '-1';
+    iframe.style.pointerEvents = 'none';
 
     document.body.appendChild(iframe);
 
@@ -153,7 +157,7 @@ export function History({
       const doc = iframe.contentDocument;
 
       if (!doc) {
-        throw new Error('Não foi possível renderizar o recibo.');
+        throw new Error('Não foi possível criar o documento temporário.');
       }
 
       doc.open();
@@ -166,69 +170,49 @@ export function History({
         await doc.fonts.ready;
       }
 
-      const height = Math.max(
-        doc.body.scrollHeight,
-        doc.documentElement.scrollHeight
-      );
-
-      iframe.style.height = `${height + 50}px`;
-
+      // Aguarda o WebView concluir a renderização.
       await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => resolve());
+        iframe.contentWindow?.requestAnimationFrame(() => {
+          iframe.contentWindow?.requestAnimationFrame(() => resolve());
+        });
       });
 
+      const height = Math.max(
+        doc.body.scrollHeight,
+        doc.documentElement.scrollHeight,
+        1200
+      );
+
+      iframe.style.height = `${height}px`;
+
       const canvas = await html2canvas(doc.body, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
-        logging: false,
+        logging: true,
         windowWidth: 900,
-        windowHeight: height + 50,
+        windowHeight: height,
         scrollX: 0,
         scrollY: 0,
       });
 
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (result) => {
-            if (result) {
-              resolve(result);
-            } else {
-              reject(new Error('Falha ao gerar a imagem JPG.'));
-            }
-          },
-          'image/jpeg',
-          0.95
-        );
-      });
+      if (!canvas.width || !canvas.height) {
+        throw new Error('A imagem foi gerada vazia.');
+      }
+
+      // Gera diretamente uma imagem JPEG em Base64.
+      const base64Data = canvas.toDataURL('image/jpeg', 0.92);
+
+      if (!base64Data || !base64Data.startsWith('data:image/jpeg;base64,')) {
+        throw new Error('Não foi possível converter o recibo para JPG.');
+      }
 
       const filename = `${receipt.id}.jpg`;
 
-      // Aplicativo Android/iOS via Capacitor
       if (Capacitor.isNativePlatform()) {
-        const base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-
-          reader.onloadend = () => {
-            const result = reader.result;
-
-            if (typeof result !== 'string') {
-              reject(new Error('Falha ao converter imagem.'));
-              return;
-            }
-
-            resolve(result);
-          };
-
-          reader.onerror = () => {
-            reject(new Error('Falha ao ler imagem.'));
-          };
-
-          reader.readAsDataURL(blob);
-        });
-
-        await FileSharer.save({
+        // Salva diretamente na pasta Downloads do Android.
+        const result = await FileSharer.save({
           filename,
           contentType: 'image/jpeg',
           base64Data,
@@ -238,8 +222,12 @@ export function History({
           },
         });
 
+        console.log('JPG salvo:', result);
       } else {
-        // Navegador convencional
+        // Exportação pelo navegador.
+        const response = await fetch(base64Data);
+        const blob = await response.blob();
+
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
 
@@ -250,7 +238,7 @@ export function History({
         link.click();
         link.remove();
 
-        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        URL.revokeObjectURL(url);
       }
 
       notify('Recibo JPG exportado com sucesso!');
@@ -258,12 +246,16 @@ export function History({
     } catch (error) {
       console.error('Erro ao exportar recibo JPG:', error);
 
-      notify('Não foi possível exportar o recibo como JPG.');
+      const message =
+        error instanceof Error ? error.message : String(error);
+
+      notify(`Erro ao exportar JPG: ${message}`);
 
     } finally {
       iframe.remove();
     }
   };
+
 
   // Compartilhamento do recibo como PDF.
   const share = async () => {
