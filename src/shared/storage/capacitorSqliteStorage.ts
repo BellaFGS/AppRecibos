@@ -16,11 +16,21 @@ export class CapacitorSqliteStorage implements KeyValueStorage {
         const database = consistency.result && isConnected
           ? await sqlite.retrieveConnection(DATABASE_NAME, false)
           : await sqlite.createConnection(DATABASE_NAME, false, 'no-encryption', 1, false);
+
         await database.open();
-        await database.execute('CREATE TABLE IF NOT EXISTS app_records (record_key TEXT PRIMARY KEY NOT NULL, record_value TEXT NOT NULL)');
+        await database.execute(
+          'CREATE TABLE IF NOT EXISTS app_records (record_key TEXT PRIMARY KEY NOT NULL, record_value TEXT NOT NULL)',
+        );
+
         return database;
-      })();
+      })().catch((error: unknown) => {
+        // Permite uma nova tentativa caso a inicialização nativa falhe.
+        this.connectionPromise = null;
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new Error(`Falha ao inicializar o banco SQLite do PJ OWL: ${detail}`);
+      });
     }
+
     return this.connectionPromise;
   }
 
