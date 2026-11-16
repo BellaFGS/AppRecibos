@@ -144,36 +144,35 @@ export function ReceiptRow({
   // EXPORTAÇÃO DO RECIBO COMO JPG
   // --------------------------------------------------
 
+
+  // Exportação do recibo como JPG
   const exportJpg = async () => {
     const iframe = document.createElement('iframe');
 
     iframe.style.position = 'fixed';
-    iframe.style.left = '0';
+    iframe.style.left = '-10000px';
     iframe.style.top = '0';
     iframe.style.width = '900px';
-    iframe.style.height = '1200px';
+    iframe.style.height = '1400px';
     iframe.style.border = '0';
-    iframe.style.opacity = '0.01';
-    iframe.style.zIndex = '-1';
-    iframe.style.pointerEvents = 'none';
+    iframe.style.visibility = 'hidden';
 
     document.body.appendChild(iframe);
 
     try {
       const doc = iframe.contentDocument;
+      const win = iframe.contentWindow;
 
-      if (!doc) {
-        throw new Error(
-          'Não foi possível criar o documento temporário.'
-        );
+      if (!doc || !win) {
+        throw new Error('Não foi possível preparar o recibo para exportação.');
       }
 
-      // Cria o HTML do recibo dentro do iframe.
+      // Monta o documento temporário.
       doc.open();
       doc.write(receiptPrintHtml(receipt));
       doc.close();
 
-      // Aguarda as imagens carregarem.
+      // Aguarda as imagens.
       await waitForImages(doc);
 
       // Aguarda as fontes.
@@ -181,17 +180,10 @@ export function ReceiptRow({
         await doc.fonts.ready;
       }
 
-      // Aguarda o WebView concluir a renderização.
+      // Aguarda a renderização do WebView.
       await new Promise<void>((resolve) => {
-        const frameWindow = iframe.contentWindow;
-
-        if (!frameWindow) {
-          resolve();
-          return;
-        }
-
-        frameWindow.requestAnimationFrame(() => {
-          frameWindow.requestAnimationFrame(() => resolve());
+        win.requestAnimationFrame(() => {
+          win.requestAnimationFrame(() => resolve());
         });
       });
 
@@ -199,18 +191,20 @@ export function ReceiptRow({
       const height = Math.max(
         doc.body.scrollHeight,
         doc.documentElement.scrollHeight,
-        1200
+        1400
       );
 
       iframe.style.height = `${height}px`;
 
-      // Converte o HTML em Canvas.
+      // Converte o documento em canvas.
       const canvas = await html2canvas(doc.body, {
         scale: 1.5,
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
         logging: false,
+        width: 900,
+        height,
         windowWidth: 900,
         windowHeight: height,
         scrollX: 0,
@@ -218,71 +212,42 @@ export function ReceiptRow({
       });
 
       if (!canvas.width || !canvas.height) {
-        throw new Error('A imagem foi gerada vazia.');
+        throw new Error('A imagem gerada está vazia.');
       }
 
-      // Gera a imagem JPEG.
+      // Gera a imagem JPG.
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
 
-      // Verifica se o navegador gerou um JPEG válido.
       if (!dataUrl.startsWith('data:image/jpeg;base64,')) {
-        throw new Error(
-          'O dispositivo não conseguiu gerar a imagem JPEG.'
-        );
+        throw new Error('O navegador não conseguiu gerar a imagem JPG.');
       }
 
-      // Remove o cabeçalho Data URL para enviar ao plugin nativo.
-      const base64Data = dataUrl
-        .substring(dataUrl.indexOf(',') + 1)
-        .trim();
-
-      if (!base64Data || base64Data.length < 100) {
-        throw new Error(
-          'A imagem JPG gerada está vazia ou inválida.'
-        );
-      }
-
-      // Verifica se o conteúdo possui caracteres Base64 válidos.
-      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64Data)) {
-        throw new Error(
-          'Os dados da imagem não estão em Base64 válido.'
-        );
-      }
-
-      const filename = `${receipt.id}.jpg`;
+      // Nome seguro para o arquivo.
+      const safeId = receipt.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Recibo_${safeId}.jpg`;
 
       // ------------------------------------------------
       // ANDROID / CAPACITOR
       // ------------------------------------------------
 
       if (Capacitor.isNativePlatform()) {
+        // Android: envia a Data URL completa ao plugin.
         const result = await FileSharer.save({
           filename,
           contentType: 'image/jpeg',
-          base64Data,
+          base64Data: dataUrl,
           android: {
             saveDirectory: 'downloads',
             relativePath: 'Download/PJ OWL',
           },
         });
 
-        console.log('JPG salvo:', result);
+        console.log('Recibo JPG salvo:', result);
 
+        notify('Recibo JPG salvo na pasta Downloads/PJ OWL!');
       } else {
-
-        // ----------------------------------------------
-        // NAVEGADOR
-        // ----------------------------------------------
-
-        // Usa o Data URL completo para gerar o Blob.
+        // Navegador: converte para Blob e baixa.
         const response = await fetch(dataUrl);
-
-        if (!response.ok) {
-          throw new Error(
-            'Não foi possível preparar o arquivo JPG para download.'
-          );
-        }
-
         const blob = await response.blob();
 
         const url = URL.createObjectURL(blob);
@@ -296,14 +261,10 @@ export function ReceiptRow({
         link.click();
         link.remove();
 
-        // Libera a URL depois que o navegador iniciar o download.
-        window.setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 1000);
+        URL.revokeObjectURL(url);
+
+        notify('Recibo JPG exportado com sucesso!');
       }
-
-      notify('Recibo JPG exportado com sucesso!');
-
     } catch (error) {
       console.error('Erro ao exportar recibo JPG:', error);
 
@@ -313,11 +274,14 @@ export function ReceiptRow({
           : String(error);
 
       notify(`Erro ao exportar JPG: ${message}`);
-
     } finally {
       iframe.remove();
     }
   };
+
+  // --------------------------------------------------
+  // COMPARTILHAMENTO DO RECIBO COMO PDF
+  // --------------------------------------------------
 
   // --------------------------------------------------
   // COMPARTILHAMENTO DO RECIBO COMO PDF
