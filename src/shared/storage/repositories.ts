@@ -35,10 +35,16 @@ export class LocalRepository<T> implements Repository<T> {
   }
 
   save(value: T): Promise<void> {
-    this.queue = this.queue.then(() =>
-      this.storage.set(this.key, value),
-    );
+    // Uma falha anterior não pode bloquear permanentemente as próximas gravações.
+    this.queue = this.queue
+      .catch(() => undefined)
+      .then(() => this.storage.set(this.key, value));
 
+    return this.queue;
+  }
+
+  /** Aguarda a fila atual sem criar uma nova gravação. */
+  flush(): Promise<void> {
     return this.queue;
   }
 }

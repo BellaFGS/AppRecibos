@@ -10,6 +10,8 @@ export interface KeyValueStorage {
 export interface Repository<T> {
   get(): Promise<T>;
   save(value: T): Promise<void>;
+  /** Aguarda todas as gravações enfileiradas neste repositório. */
+  flush(): Promise<void>;
 }
 
 export interface BackupData {
