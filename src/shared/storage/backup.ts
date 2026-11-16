@@ -7,7 +7,9 @@ import type {
 } from './types';
 
 import { CURRENT_SCHEMA_VERSION } from './migrations';
-import { saveFileToDownloads, type SaveFileResult } from '../native/saveFile';
+import { Capacitor } from '@capacitor/core';
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { FileSharer } from '@capgo/capacitor-file-sharer';
 
 const DATA_KEYS: StorageKey[] = [
   'profile',
@@ -211,19 +213,78 @@ export async function getStorageUsageBytes(
 }
 
 /**
- * Exporta o backup JSON. No Android grava em Downloads/PJ OWL (ou abre o
- * compartilhamento se o plugin recusar); no navegador faz o download.
+ * Codifica texto UTF-8 em Base64 para o download no navegador.
+ * No Android, o arquivo é escrito em cache e enviado ao FileSharer por URI,
+ * evitando a conversão manual de Base64 no caminho nativo.
+ */
+function encodeBase64Utf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+/**
+ * Exporta o JSON para Downloads/PJ OWL no Android.
+ * O arquivo temporário fica no cache privado apenas durante a cópia e é
+ * removido ao final. O backup definitivo é salvo fora do aplicativo.
  */
 export async function downloadBackupFile(
   backup: BackupDocument,
-): Promise<SaveFileResult> {
+): Promise<void> {
   const json = JSON.stringify(backup, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[:.]/g, '-');
+  const filename = `pj-owl-backup-${timestamp}.json`;
 
-  return saveFileToDownloads(
-    blob,
-    `pj-owl-backup-${timestamp}.json`,
-    'Backup PJ OWL',
-  );
+  if (Capacitor.isNativePlatform()) {
+    const tempPath = `export-${filename}`;
+    let tempFileUri: string | undefined;
+
+    try {
+      const tempFile = await Filesystem.writeFile({
+        path: tempPath,
+        data: json,
+        encoding: Encoding.UTF8,
+        directory: Directory.Cache,
+        recursive: true,
+      });
+      tempFileUri = tempFile.uri;
+
+      await FileSharer.save({
+        filename,
+        contentType: 'application/json',
+        path: tempFileUri,
+        android: {
+          saveDirectory: 'downloads',
+          relativePath: 'Download/PJ OWL',
+        },
+      });
+    } finally {
+      if (tempFileUri) {
+        await Filesystem.deleteFile({
+          path: tempPath,
+          directory: Directory.Cache,
+        }).catch((error) => {
+          console.warn('Não foi possível remover o backup temporário:', error);
+        });
+      }
+    }
+
+    return;
+  }
+
+  // Navegadores: o plugin realiza o download usando Base64 UTF-8.
+  await FileSharer.save({
+    filename,
+    contentType: 'application/json',
+    base64Data: encodeBase64Utf8(json),
+  });
 }
