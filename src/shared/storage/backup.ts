@@ -7,6 +7,8 @@ import type {
 } from './types';
 
 import { CURRENT_SCHEMA_VERSION } from './migrations';
+import { Capacitor } from '@capacitor/core';
+import { FileSharer } from '@capgo/capacitor-file-sharer';
 
 const DATA_KEYS: StorageKey[] = [
   'profile',
@@ -209,24 +211,51 @@ export async function getStorageUsageBytes(
   ).size;
 }
 
-export function downloadBackupFile(
+/**
+ * Codifica texto UTF-8 em Base64 sem corromper acentos ou caracteres especiais.
+ * O processamento em blocos evita estourar a pilha em backups maiores.
+ */
+function encodeBase64Utf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+/**
+ * Exporta o JSON para a coleção pública Downloads do Android,
+ * dentro de Downloads/PJ OWL. No navegador, o plugin realiza o download.
+ *
+ * O arquivo exportado fica fora do banco privado do aplicativo.
+ */
+export async function downloadBackupFile(
   backup: BackupDocument,
-): void {
-  const blob = new Blob(
-    [JSON.stringify(backup, null, 2)],
-    { type: 'application/json' },
-  );
+): Promise<void> {
+  const json = JSON.stringify(backup, null, 2);
+  const base64Data = encodeBase64Utf8(json);
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[:.]/g, '-');
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const filename = `pj-owl-backup-${timestamp}.json`;
 
-  link.href = url;
-  link.download =
-    `pj-owl-backup-${new Date().toISOString().slice(0, 10)}.json`;
-
-  link.click();
-
-  window.setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 1000);
+  await FileSharer.save({
+    filename,
+    contentType: 'application/json',
+    base64Data,
+    ...(Capacitor.isNativePlatform()
+      ? {
+          android: {
+            saveDirectory: 'downloads' as const,
+            relativePath: 'PJ OWL',
+          },
+        }
+      : {}),
+  });
 }
