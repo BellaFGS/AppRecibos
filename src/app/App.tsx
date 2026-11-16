@@ -101,8 +101,10 @@ export function App() {
   const exportBackup = async () => {
     try {
       if (!storageRef.current) throw new Error('O armazenamento ainda não está pronto.');
-      downloadBackupFile(await createBackup(storageRef.current));
-      notify('Backup exportado com sucesso. Guarde o arquivo em outro local.');
+      await downloadBackupFile(await createBackup(storageRef.current));
+      notify(Capacitor.isNativePlatform()
+        ? 'Backup salvo em Downloads/PJ OWL no dispositivo.'
+        : 'Backup baixado com sucesso.');
     } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível exportar o backup.'); }
   };
   const importBackup = async (file: File) => {
