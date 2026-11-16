@@ -12,8 +12,7 @@ import { Modal } from '../../shared/components/Modal';
 import { formatDocument } from '../../shared/validation/document';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { Capacitor } from '@capacitor/core';
-import { FileSharer } from '@capgo/capacitor-file-sharer';
+import { saveFileToDownloads } from '../../shared/native/saveFile';
 
 export function History({
   receipts,
@@ -225,40 +224,19 @@ export function ReceiptRow({
       const safeId = receipt.id.replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `Recibo_${safeId}.jpg`;
 
-      if (Capacitor.isNativePlatform()) {
-        // Android: envia a Data URL completa ao plugin.
-        const result = await FileSharer.save({
-          filename,
-          contentType: 'image/jpeg',
-          base64Data: dataUrl,
-          android: {
-            saveDirectory: 'downloads',
-            relativePath: 'Download/PJ OWL',
-          },
-        });
+      // Converte a Data URL em Blob (o plugin nativo exige Base64 puro,
+      // sem o prefixo "data:image/jpeg;base64,").
+      const blob = await (await fetch(dataUrl)).blob();
 
-        console.log('Recibo JPG salvo:', result);
+      const result = await saveFileToDownloads(blob, filename, `Recibo ${receipt.id}`);
 
-        notify('Recibo JPG salvo na pasta Downloads/PJ OWL!');
-      } else {
-        // Navegador: converte para Blob e baixa.
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-
-        link.href = url;
-        link.download = filename;
-
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-
-        URL.revokeObjectURL(url);
-
-        notify('Recibo JPG exportado com sucesso!');
-      }
+      notify(
+        result === 'downloads'
+          ? 'Recibo JPG salvo em Downloads/PJ OWL!'
+          : result === 'share'
+            ? 'Recibo JPG pronto para salvar ou compartilhar.'
+            : 'Recibo JPG exportado com sucesso!',
+      );
     } catch (error) {
       console.error('Erro ao exportar recibo JPG:', error);
 

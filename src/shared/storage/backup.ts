@@ -7,8 +7,7 @@ import type {
 } from './types';
 
 import { CURRENT_SCHEMA_VERSION } from './migrations';
-import { Capacitor } from '@capacitor/core';
-import { FileSharer } from '@capgo/capacitor-file-sharer';
+import { saveFileToDownloads, type SaveFileResult } from '../native/saveFile';
 
 const DATA_KEYS: StorageKey[] = [
   'profile',
@@ -212,50 +211,19 @@ export async function getStorageUsageBytes(
 }
 
 /**
- * Codifica texto UTF-8 em Base64 sem corromper acentos ou caracteres especiais.
- * O processamento em blocos evita estourar a pilha em backups maiores.
- */
-function encodeBase64Utf8(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  const chunkSize = 0x8000;
-  let binary = '';
-
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    const chunk = bytes.subarray(offset, offset + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-
-  return btoa(binary);
-}
-
-/**
- * Exporta o JSON para a coleção pública Downloads do Android,
- * dentro de Downloads/PJ OWL. No navegador, o plugin realiza o download.
- *
- * O arquivo exportado fica fora do banco privado do aplicativo.
+ * Exporta o backup JSON. No Android grava em Downloads/PJ OWL (ou abre o
+ * compartilhamento se o plugin recusar); no navegador faz o download.
  */
 export async function downloadBackupFile(
   backup: BackupDocument,
-): Promise<void> {
+): Promise<SaveFileResult> {
   const json = JSON.stringify(backup, null, 2);
-  const base64Data = encodeBase64Utf8(json);
-  const timestamp = new Date()
-    .toISOString()
-    .replace(/[:.]/g, '-');
+  const blob = new Blob([json], { type: 'application/json' });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
-  const filename = `pj-owl-backup-${timestamp}.json`;
-
-  await FileSharer.save({
-    filename,
-    contentType: 'application/json',
-    base64Data,
-    ...(Capacitor.isNativePlatform()
-      ? {
-          android: {
-            saveDirectory: 'downloads' as const,
-            relativePath: 'PJ OWL',
-          },
-        }
-      : {}),
-  });
+  return saveFileToDownloads(
+    blob,
+    `pj-owl-backup-${timestamp}.json`,
+    'Backup PJ OWL',
+  );
 }
