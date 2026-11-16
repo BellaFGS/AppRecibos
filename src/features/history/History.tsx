@@ -124,73 +124,86 @@ export function History({
   );
 }
 
+// ======================================================
+// ITEM DO HISTÓRICO
+// ======================================================
 
-  export function ReceiptRow({
-    receipt,
-    onDelete,
-    onView,
-    notify,
-  }: {
-    receipt: Receipt;
-    onDelete: () => void;
-    onView: () => void;
-    notify: (message: string) => void;
-  }) {
+export function ReceiptRow({
+  receipt,
+  onDelete,
+  onView,
+  notify,
+}: {
+  receipt: Receipt;
+  onDelete: () => void;
+  onView: () => void;
+  notify: (message: string) => void;
+}) {
+
+  // --------------------------------------------------
+  // EXPORTAÇÃO DO RECIBO COMO JPG
+  // --------------------------------------------------
+
+
   // Exportação do recibo como JPG
-
   const exportJpg = async () => {
     const iframe = document.createElement('iframe');
 
     iframe.style.position = 'fixed';
-    iframe.style.left = '0';
+    iframe.style.left = '-10000px';
     iframe.style.top = '0';
     iframe.style.width = '900px';
-    iframe.style.height = '1200px';
+    iframe.style.height = '1400px';
     iframe.style.border = '0';
-    iframe.style.opacity = '0.01';
-    iframe.style.zIndex = '-1';
-    iframe.style.pointerEvents = 'none';
+    iframe.style.visibility = 'hidden';
 
     document.body.appendChild(iframe);
 
     try {
       const doc = iframe.contentDocument;
+      const win = iframe.contentWindow;
 
-      if (!doc) {
-        throw new Error('Não foi possível criar o documento temporário.');
+      if (!doc || !win) {
+        throw new Error('Não foi possível preparar o recibo para exportação.');
       }
 
+      // Monta o documento temporário.
       doc.open();
       doc.write(receiptPrintHtml(receipt));
       doc.close();
 
+      // Aguarda as imagens.
       await waitForImages(doc);
 
+      // Aguarda as fontes.
       if (doc.fonts) {
         await doc.fonts.ready;
       }
 
-      // Aguarda o WebView concluir a renderização.
+      // Aguarda a renderização do WebView.
       await new Promise<void>((resolve) => {
-        iframe.contentWindow?.requestAnimationFrame(() => {
-          iframe.contentWindow?.requestAnimationFrame(() => resolve());
+        win.requestAnimationFrame(() => {
+          win.requestAnimationFrame(() => resolve());
         });
       });
 
       const height = Math.max(
         doc.body.scrollHeight,
         doc.documentElement.scrollHeight,
-        1200
+        1400
       );
 
       iframe.style.height = `${height}px`;
 
+      // Converte o documento em canvas.
       const canvas = await html2canvas(doc.body, {
         scale: 1.5,
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
-        logging: true,
+        logging: false,
+        width: 900,
+        height,
         windowWidth: 900,
         windowHeight: height,
         scrollX: 0,
@@ -198,47 +211,38 @@ export function History({
       });
 
       if (!canvas.width || !canvas.height) {
-        throw new Error('A imagem foi gerada vazia.');
+        throw new Error('A imagem gerada está vazia.');
       }
 
-      // Gera diretamente uma imagem JPEG em Base64.
+      // Gera a imagem JPG.
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
 
-      // Remove o cabeçalho data:image/jpeg;base64,
-      const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1).trim();
-
-      if (!base64Data || base64Data.length < 100) {
-        throw new Error('A imagem JPG gerada está vazia ou inválida.');
+      if (!dataUrl.startsWith('data:image/jpeg;base64,')) {
+        throw new Error('O navegador não conseguiu gerar a imagem JPG.');
       }
 
-      // Confere se o conteúdo possui caracteres Base64 válidos.
-      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64Data)) {
-        throw new Error('Os dados da imagem não estão em Base64 válido.');
-      }
-
-      if (!base64Data || !base64Data.startsWith('data:image/jpeg;base64,')) {
-        throw new Error('Não foi possível converter o recibo para JPG.');
-      }
-
-      const filename = `${receipt.id}.jpg`;
+      // Nome seguro para o arquivo.
+      const safeId = receipt.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Recibo_${safeId}.jpg`;
 
       if (Capacitor.isNativePlatform()) {
-        // Salva diretamente na pasta Downloads do Android.
+        // Android: envia a Data URL completa ao plugin.
         const result = await FileSharer.save({
           filename,
           contentType: 'image/jpeg',
-          base64Data,
+          base64Data: dataUrl,
           android: {
             saveDirectory: 'downloads',
             relativePath: 'Download/PJ OWL',
           },
         });
 
-        
-        console.log('JPG salvo:', result);
+        console.log('Recibo JPG salvo:', result);
+
+        notify('Recibo JPG salvo na pasta Downloads/PJ OWL!');
       } else {
-        // Exportação pelo navegador.
-        const response = await fetch(base64Data);
+        // Navegador: converte para Blob e baixa.
+        const response = await fetch(dataUrl);
         const blob = await response.blob();
 
         const url = URL.createObjectURL(blob);
@@ -252,25 +256,28 @@ export function History({
         link.remove();
 
         URL.revokeObjectURL(url);
+
+        notify('Recibo JPG exportado com sucesso!');
       }
-
-      notify('Recibo JPG exportado com sucesso!');
-
     } catch (error) {
       console.error('Erro ao exportar recibo JPG:', error);
 
       const message =
-        error instanceof Error ? error.message : String(error);
+        error instanceof Error
+          ? error.message
+          : String(error);
 
       notify(`Erro ao exportar JPG: ${message}`);
-
     } finally {
       iframe.remove();
     }
   };
 
 
-  // Compartilhamento do recibo como PDF.
+  // --------------------------------------------------
+  // COMPARTILHAMENTO DO RECIBO COMO PDF
+  // --------------------------------------------------
+
   const share = async () => {
     try {
       const pdf = await generateReceiptPdf(receipt);
@@ -284,8 +291,11 @@ export function History({
       );
 
       notify('Recibo PDF pronto para compartilhar.');
+
     } catch (error) {
-      if (!(error instanceof Error && error.name === 'AbortError')) {
+      if (
+        !(error instanceof Error && error.name === 'AbortError')
+      ) {
         notify('Não foi possível abrir o compartilhamento.');
       }
     }
@@ -357,8 +367,15 @@ export function History({
   );
 }
 
+// ======================================================
+// DETALHES DO RECIBO
+// ======================================================
 
-export function ReceiptDetails({ receipt }: { receipt: Receipt }) {
+export function ReceiptDetails({
+  receipt,
+}: {
+  receipt: Receipt;
+}) {
   return (
     <div className="receipt-details-modal">
       {receipt.providerLogo && (
@@ -404,7 +421,9 @@ export function ReceiptDetails({ receipt }: { receipt: Receipt }) {
 
         <p>
           <span>REFERENTE A</span>
-          <strong>{receipt.description || 'SERVICO OU PRODUTO'}</strong>
+          <strong>
+            {receipt.description || 'SERVICO OU PRODUTO'}
+          </strong>
         </p>
 
         <p>
@@ -419,13 +438,18 @@ export function ReceiptDetails({ receipt }: { receipt: Receipt }) {
 
         <p>
           <span>DATA</span>
-          <strong>{longDate(receipt.paymentDate).toUpperCase()}</strong>
+          <strong>
+            {longDate(receipt.paymentDate).toUpperCase()}
+          </strong>
         </p>
 
         <p>
           <span>VALOR POR EXTENSO</span>
           <strong>
-            {amountToWords(receipt.amount, receipt.currency).toUpperCase()}
+            {amountToWords(
+              receipt.amount,
+              receipt.currency
+            ).toUpperCase()}
           </strong>
         </p>
       </div>
@@ -433,8 +457,10 @@ export function ReceiptDetails({ receipt }: { receipt: Receipt }) {
       {receipt.originalCurrency === 'USD' &&
         receipt.originalAmount !== undefined && (
           <p className="muted">
-            VALOR INFORMADO: {money(receipt.originalAmount, 'USD').toUpperCase()}
-            {' · '}COTAÇÃO {receipt.exchangeRate?.toFixed(4) ?? 'N/D'} BRL/USD
+            VALOR INFORMADO:{' '}
+            {money(receipt.originalAmount, 'USD').toUpperCase()}
+            {' · '}
+            COTAÇÃO {receipt.exchangeRate?.toFixed(4) ?? 'N/D'} BRL/USD
           </p>
         )}
 
@@ -453,7 +479,9 @@ export function ReceiptDetails({ receipt }: { receipt: Receipt }) {
             />
           )}
 
-          <span>PRESTADOR: {receipt.providerName.toUpperCase()}</span>
+          <span>
+            PRESTADOR: {receipt.providerName.toUpperCase()}
+          </span>
         </div>
 
         <div>
@@ -464,7 +492,9 @@ export function ReceiptDetails({ receipt }: { receipt: Receipt }) {
             />
           )}
 
-          <span>CLIENTE: {receipt.clientName.toUpperCase()}</span>
+          <span>
+            CLIENTE: {receipt.clientName.toUpperCase()}
+          </span>
         </div>
       </div>
     </div>
@@ -481,7 +511,9 @@ interface LoadedImage {
   height: number;
 }
 
-async function loadImage(src: string): Promise<HTMLImageElement | null> {
+async function loadImage(
+  src: string
+): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
 
@@ -503,7 +535,9 @@ async function loadImage(src: string): Promise<HTMLImageElement | null> {
  * Isso permite incorporar a logo e as assinaturas
  * diretamente no documento PDF.
  */
-async function imageToPng(src: string): Promise<LoadedImage | null> {
+async function imageToPng(
+  src: string
+): Promise<LoadedImage | null> {
   try {
     const img = await loadImage(src);
 
@@ -532,6 +566,7 @@ async function imageToPng(src: string): Promise<LoadedImage | null> {
       width,
       height,
     };
+
   } catch (error) {
     console.error('Erro ao converter imagem:', error);
     return null;
@@ -636,7 +671,9 @@ export async function generateReceiptPdf(
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(47, 38, 66);
 
-  const businessName = (receipt.businessName || 'PJ OWL').toUpperCase();
+  const businessName = (
+    receipt.businessName || 'PJ OWL'
+  ).toUpperCase();
 
   const businessLines = doc.splitTextToSize(
     businessName,
@@ -1002,7 +1039,7 @@ export async function generateReceiptPdf(
 }
 
 // ======================================================
-// EXPORTAÇÃO PARA IMPRESSÃO / PDF PELO NAVEGADOR
+// HTML DO RECIBO PARA EXPORTAÇÃO JPG
 // ======================================================
 
 export function receiptPrintHtml(receipt: Receipt) {
@@ -1052,6 +1089,7 @@ body {
   max-width: 760px;
   margin: 40px auto;
   padding: 0 32px;
+  background: #ffffff;
 }
 
 header {
