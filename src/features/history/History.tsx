@@ -187,6 +187,7 @@ export function ReceiptRow({
         });
       });
 
+      // Calcula a altura real do documento.
       const height = Math.max(
         doc.body.scrollHeight,
         doc.documentElement.scrollHeight,
@@ -225,6 +226,10 @@ export function ReceiptRow({
       const safeId = receipt.id.replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `Recibo_${safeId}.jpg`;
 
+      // ------------------------------------------------
+      // ANDROID / CAPACITOR
+      // ------------------------------------------------
+
       if (Capacitor.isNativePlatform()) {
         // Android: envia a Data URL completa ao plugin.
         const result = await FileSharer.save({
@@ -246,6 +251,7 @@ export function ReceiptRow({
         const blob = await response.blob();
 
         const url = URL.createObjectURL(blob);
+
         const link = document.createElement('a');
 
         link.href = url;
@@ -273,6 +279,9 @@ export function ReceiptRow({
     }
   };
 
+  // --------------------------------------------------
+  // COMPARTILHAMENTO DO RECIBO COMO PDF
+  // --------------------------------------------------
 
   // --------------------------------------------------
   // COMPARTILHAMENTO DO RECIBO COMO PDF
