@@ -186,6 +186,7 @@ export function ReceiptRow({
         });
       });
 
+      // Calcula a altura real do documento.
       const height = Math.max(
         doc.body.scrollHeight,
         doc.documentElement.scrollHeight,
@@ -251,6 +252,9 @@ export function ReceiptRow({
     }
   };
 
+  // --------------------------------------------------
+  // COMPARTILHAMENTO DO RECIBO COMO PDF
+  // --------------------------------------------------
 
   // --------------------------------------------------
   // COMPARTILHAMENTO DO RECIBO COMO PDF
