@@ -12,7 +12,9 @@ import { Modal } from '../../shared/components/Modal';
 import { formatDocument } from '../../shared/validation/document';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { saveFileToDownloads } from '../../shared/native/saveFile';
+import { Capacitor } from '@capacitor/core';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { FileSharer } from '@capgo/capacitor-file-sharer';
 
 export function History({
   receipts,
@@ -147,6 +149,10 @@ export function ReceiptRow({
   // Exportação do recibo como JPG
   const exportJpg = async () => {
     const iframe = document.createElement('iframe');
+    const safeId = String(receipt.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `Recibo_${safeId}.jpg`;
+    const tempPath = `export-${Date.now()}-${filename}`;
+    let tempFileCreated = false;
 
     iframe.style.position = 'fixed';
     iframe.style.left = '-10000px';
@@ -155,7 +161,6 @@ export function ReceiptRow({
     iframe.style.height = '1400px';
     iframe.style.border = '0';
     iframe.style.visibility = 'hidden';
-
     document.body.appendChild(iframe);
 
     try {
@@ -166,36 +171,26 @@ export function ReceiptRow({
         throw new Error('Não foi possível preparar o recibo para exportação.');
       }
 
-      // Monta o documento temporário.
       doc.open();
       doc.write(receiptPrintHtml(receipt));
       doc.close();
 
-      // Aguarda as imagens.
       await waitForImages(doc);
+      if (doc.fonts) await doc.fonts.ready;
 
-      // Aguarda as fontes.
-      if (doc.fonts) {
-        await doc.fonts.ready;
-      }
-
-      // Aguarda a renderização do WebView.
       await new Promise<void>((resolve) => {
         win.requestAnimationFrame(() => {
           win.requestAnimationFrame(() => resolve());
         });
       });
 
-      // Calcula a altura real do documento.
       const height = Math.max(
         doc.body.scrollHeight,
         doc.documentElement.scrollHeight,
-        1400
+        1400,
       );
-
       iframe.style.height = `${height}px`;
 
-      // Converte o documento em canvas.
       const canvas = await html2canvas(doc.body, {
         scale: 1.5,
         useCORS: true,
@@ -214,47 +209,69 @@ export function ReceiptRow({
         throw new Error('A imagem gerada está vazia.');
       }
 
-      // Gera a imagem JPG.
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-
-      if (!dataUrl.startsWith('data:image/jpeg;base64,')) {
+      const prefix = 'data:image/jpeg;base64,';
+      if (!dataUrl.startsWith(prefix)) {
         throw new Error('O navegador não conseguiu gerar a imagem JPG.');
       }
 
-      // Nome seguro para o arquivo.
-      const safeId = receipt.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const filename = `Recibo_${safeId}.jpg`;
+      if (Capacitor.isNativePlatform()) {
+        // Filesystem.writeFile recebe Base64 puro para gravar bytes binários.
+        // Não informar Encoding.UTF8 aqui, pois isso salvaria o texto Base64.
+        const base64Data = dataUrl.slice(prefix.length).replace(/\s/g, '');
+        if (!base64Data || base64Data.length < 100) {
+          throw new Error('A imagem JPG gerada contém dados inválidos.');
+        }
 
-      // Converte a Data URL em Blob (o plugin nativo exige Base64 puro,
-      // sem o prefixo "data:image/jpeg;base64,").
-      const blob = await (await fetch(dataUrl)).blob();
+        const tempFile = await Filesystem.writeFile({
+          path: tempPath,
+          data: base64Data,
+          directory: Directory.Cache,
+          recursive: true,
+        });
+        tempFileCreated = true;
 
-      const result = await saveFileToDownloads(blob, filename, `Recibo ${receipt.id}`);
+        await FileSharer.save({
+          filename,
+          contentType: 'image/jpeg',
+          path: tempFile.uri,
+          android: {
+            saveDirectory: 'downloads',
+            relativePath: 'Download/PJ OWL',
+          },
+        });
 
-      notify(
-        result === 'downloads'
-          ? 'Recibo JPG salvo em Downloads/PJ OWL!'
-          : result === 'share'
-            ? 'Recibo JPG pronto para salvar ou compartilhar.'
-            : 'Recibo JPG exportado com sucesso!',
-      );
+        notify('Recibo JPG salvo na pasta Downloads/PJ OWL!');
+      } else {
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        notify('Recibo JPG exportado com sucesso!');
+      }
     } catch (error) {
       console.error('Erro ao exportar recibo JPG:', error);
-
-      const message =
-        error instanceof Error
-          ? error.message
-          : String(error);
-
+      const message = error instanceof Error ? error.message : String(error);
       notify(`Erro ao exportar JPG: ${message}`);
     } finally {
+      if (tempFileCreated) {
+        await Filesystem.deleteFile({
+          path: tempPath,
+          directory: Directory.Cache,
+        }).catch((error) => {
+          console.warn('Não foi possível remover o JPG temporário:', error);
+        });
+      }
       iframe.remove();
     }
   };
 
-  // --------------------------------------------------
-  // COMPARTILHAMENTO DO RECIBO COMO PDF
-  // --------------------------------------------------
 
   // --------------------------------------------------
   // COMPARTILHAMENTO DO RECIBO COMO PDF
