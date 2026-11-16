@@ -101,12 +101,10 @@ export function App() {
   const exportBackup = async () => {
     try {
       if (!storageRef.current) throw new Error('O armazenamento ainda não está pronto.');
-      const result = await downloadBackupFile(await createBackup(storageRef.current));
-      notify(result === 'downloads'
+      await downloadBackupFile(await createBackup(storageRef.current));
+      notify(Capacitor.isNativePlatform()
         ? 'Backup salvo em Downloads/PJ OWL no dispositivo.'
-        : result === 'share'
-          ? 'Backup pronto: escolha onde salvar ou compartilhar.'
-          : 'Backup baixado com sucesso.');
+        : 'Backup baixado com sucesso.');
     } catch (error) { notify(error instanceof Error ? error.message : 'Não foi possível exportar o backup.'); }
   };
   const importBackup = async (file: File) => {
@@ -114,8 +112,18 @@ export function App() {
       if (!storageRef.current) throw new Error('O armazenamento ainda não está pronto.');
       if (file.size > 25 * 1024 * 1024) throw new Error('O arquivo excede o limite de 25 MB.');
       const raw: unknown = JSON.parse(await file.text());
+      const repositories = repositoriesRef.current;
+      if (!repositories) throw new Error('Os repositórios ainda não estão prontos.');
+
+      // O autosave do React pode ter gravações antigas aguardando na fila.
+      // Esperamos todas terminarem ANTES de restaurar, para que não sobrescrevam
+      // o backup recém-importado no IndexedDB/SQLite.
+      await Promise.all(
+        Object.values(repositories).map((repository) => repository.flush()),
+      );
+
       await restoreBackup(storageRef.current, raw);
-      const data = await loadAllRepositories(repositoriesRef.current!);
+      const data = await loadAllRepositories(repositories);
       setProfileState(data.profile as BusinessProfile);
       setCompositionsState(data.compositions as Composition[]);
       setCalculationsState((data.calculations || []) as CalculationRecord[]);
