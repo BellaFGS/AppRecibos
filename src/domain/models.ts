@@ -1,4 +1,4 @@
-export type Section = 'dashboard' | 'costs' | 'agenda' | 'expenses' | 'receipt' | 'history' | 'profile';
+export type Section = 'dashboard' | 'costs' | 'agenda' | 'expenses' | 'receipt' | 'history' | 'profile' | 'help';
 
 export type Currency = 'BRL' | 'USD';
 
