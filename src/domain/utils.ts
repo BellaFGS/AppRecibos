@@ -19,6 +19,7 @@ export const navItems: { id: Section; label: string; icon: IconName }[] = [
   { id: 'expenses', label: 'Despesas', icon: 'wallet' },
   { id: 'receipt', label: 'Novo recibo', icon: 'receipt' },
   { id: 'profile', label: 'Perfil', icon: 'user' },
+  { id: 'help', label: 'Ajuda', icon: 'info' },
 ];
 
 export function parseMoney(value: string) {

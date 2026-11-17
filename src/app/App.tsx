@@ -17,6 +17,7 @@ import { cancelAppointmentNotifications, synchronizeAppointmentNotifications } f
 import { ReceiptCreator } from '../features/receipts/Receipts';
 import { History } from '../features/history/History';
 import { Profile } from '../features/profile/Profile';
+import { Help } from '../features/help/Help';
 
 export function App() {
   const [active, setActive] = useState<Section>('dashboard');
@@ -215,6 +216,7 @@ export function App() {
       {active === 'receipt' && <ReceiptCreator profile={profile} setReceipts={setReceipts} navigate={navigate} notify={notify} />}
       {active === 'history' && <History receipts={finalizedReceipts} setDeleteTarget={setDeleteTarget} notify={notify} />}
       {active === 'profile' && <Profile profile={profile} setProfile={setProfile} receipts={finalizedReceipts} notify={notify} onExportBackup={exportBackup} onImportBackup={importBackup} onDangerAction={handleDangerAction} />}
+      {active === 'help' && <Help />}
     </main>
     {toast && <Toast message={toast} onClose={() => setToast('')} />}
     {deleteTarget && <ConfirmDialog title={deleteTarget.type === 'all' ? 'Limpar todo o histórico?' : 'Excluir este registro?'} text="Essa ação não poderá ser desfeita dentro do aplicativo. Seus dados de perfil, logo e assinatura padrão serão preservados." onCancel={() => setDeleteTarget(null)} onConfirm={removeItem} />}
