@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { Appointment } from '../../domain/models';
 import { longDate, today, uid } from '../../domain/utils';
 import { Button, EmptyState, Field, Icon } from '../../shared/components/ui';
@@ -31,8 +31,25 @@ const emptyForm = (): AppointmentForm => ({ date: today(), time: '09:00', descri
 export function Agenda({ appointments, setAppointments, setDeleteTarget, notify }: Props) {
   const [form, setForm] = useState<AppointmentForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
-  const sorted = [...appointments].sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+  const todayDate = today();
+  const { upcoming, past, todayCount, weekCount, reminderCount } = useMemo(() => {
+    const future = appointments.filter((item) => item.date >= todayDate).sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+    const previous = appointments.filter((item) => item.date < todayDate).sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`));
+    const limit = new Date(`${todayDate}T12:00:00`);
+    limit.setDate(limit.getDate() + 7);
+    const weekEnd = `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, '0')}-${String(limit.getDate()).padStart(2, '0')}`;
+    return {
+      upcoming: future, past: previous,
+      todayCount: future.filter((item) => item.date === todayDate).length,
+      weekCount: future.filter((item) => item.date <= weekEnd).length,
+      reminderCount: appointments.filter((item) => getAppointmentReminderDays(item).length || getAppointmentReminderMinutes(item).length).length,
+    };
+  }, [appointments, todayDate]);
+
+  const openNewAppointment = () => { setEditingId(null); setForm(emptyForm()); setFormOpen(true); };
+  const closeForm = (open: boolean) => { setFormOpen(open); if (!open) { setEditingId(null); setForm(emptyForm()); } };
 
   const toggleReminderHour = (minutes: ReminderMinutes) => setForm((current) => ({ ...current, reminderMinutesBefore: current.reminderMinutesBefore.includes(minutes) ? current.reminderMinutesBefore.filter((value) => value !== minutes) : [...current.reminderMinutesBefore, minutes] }));
 
@@ -52,6 +69,7 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
       return;
     }
 
+    const wasEditing = Boolean(editingId);
     const appointment: Appointment = {
       id: editingId ?? uid('appointment'),
       date: form.date,
@@ -67,20 +85,18 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
       const result = await scheduleAppointmentNotifications(appointment, true);
       setAppointments((current) => [appointment, ...current.filter((item) => item.id !== appointment.id)]
         .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)));
-      setForm(emptyForm());
-      setEditingId(null);
+      closeForm(false);
       if (result === 'permission-denied') {
         notify('Compromisso salvo. Permita notificações nas configurações do Android para receber os lembretes.');
       } else if (result === 'unsupported' && (appointment.reminderDays?.length || appointment.reminderMinutesBefore?.length)) {
         notify('Compromisso salvo. Os alertas programados ficam disponíveis na versão Android.');
       } else {
-        notify(result === 'none' ? 'Compromisso salvo sem lembretes.' : (editingId ? 'Compromisso atualizado e lembretes reajustados.' : 'Compromisso salvo e lembretes agendados.'));
+        notify(result === 'none' ? 'Compromisso salvo sem lembretes.' : (wasEditing ? 'Compromisso atualizado e lembretes reajustados.' : 'Compromisso salvo e lembretes agendados.'));
       }
     } catch {
       setAppointments((current) => [appointment, ...current.filter((item) => item.id !== appointment.id)]
         .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)));
-      setForm(emptyForm());
-      setEditingId(null);
+      closeForm(false);
       notify('Compromisso salvo, mas não foi possível programar os alertas. Confira as permissões de notificação.');
     }
   };
@@ -95,7 +111,7 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
       reminderDays: getAppointmentReminderDays(item),
       reminderMinutesBefore: getAppointmentReminderMinutes(item),
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setFormOpen(true);
   };
 
   const copyAddress = async (address: string) => {
@@ -120,58 +136,55 @@ export function Agenda({ appointments, setAppointments, setDeleteTarget, notify 
     }
   };
 
+  const renderAppointment = (item: Appointment) => (
+    <div className="appointment-item" key={item.id}>
+      <div className="date-tile large"><strong>{new Date(`${item.date}T12:00:00`).getDate()}</strong><span>{new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(new Date(`${item.date}T12:00:00`)).replace('.', '')}</span></div>
+      <div className="appointment-content">
+        <div className="appointment-top"><button className="appointment-title-button" type="button" onClick={() => setSelectedAppointment(item)}>{item.description}</button><div className="appointment-actions">
+          <button className="mini-delete" type="button" title="Visualizar compromisso" onClick={() => setSelectedAppointment(item)}><Icon name="info" size={15} /></button>
+          <button className="mini-delete" type="button" title="Editar compromisso" aria-label={`Editar ${item.description}`} onClick={() => editAppointment(item)}><Icon name="edit" size={15} /></button>
+          <button className="mini-delete" type="button" title="Excluir compromisso" aria-label={`Excluir ${item.description}`} onClick={() => setDeleteTarget({ type: 'appointment', id: item.id })}><Icon name="trash" size={15} /></button>
+        </div></div>
+        <span><Icon name="clock" size={13} /> {longDate(item.date)} às {item.time}</span>
+        <span><Icon name="bell" size={13} /> {[...getAppointmentReminderDays(item).map((day) => `${day} dia${day > 1 ? 's' : ''} antes`), ...getAppointmentReminderMinutes(item).map((minutes) => `${minutes / 60}h antes`)].join(', ') || 'Sem lembretes'}</span>
+        {item.address && <div className="appointment-address"><span><Icon name="target" size={13} /> {item.address}</span><button type="button" className="copy-address-button" onClick={() => void copyAddress(item.address)}><Icon name="copy" size={14} /> Copiar endereço</button></div>}
+      </div>
+    </div>
+  );
+
   return (
     <div className="page">
-      <PageTitle eyebrow="Organize seus dias" title="Agenda" description="Cadastre compromissos e receba lembretes antes da hora marcada." />
-      <section className="agenda-layout">
-        <div className="card form-card">
-          <div className="card-heading">
-            <div><span className="section-kicker">{editingId ? 'Editar compromisso' : 'Novo compromisso'}</span><h2>{editingId ? 'Atualize os detalhes' : 'O que vem pela frente?'}</h2></div>
-            <span className="heading-icon blue-bg"><Icon name="calendar" /></span>
-          </div>
-          <form onSubmit={saveAppointment} className="stack-form">
-            <div className="two-fields">
-              <Field label="Data"><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required /></Field>
-              <Field label="Horário"><input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} required /></Field>
-            </div>
-            <Field label="Descrição"><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ex.: Entrega para a Ana" required /></Field>
-            <Field label="Endereço (opcional)"><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Rua, número ou ponto de encontro" /></Field>
-            <fieldset className="reminder-options">
-              <legend>Lembretes antes do compromisso</legend>
-              <p>Escolha quando o PJ OWL deve avisar você.</p>
-              <div className="reminder-checks">
-                {REMINDER_DAYS.map((day) => <label key={day}>
-                  <input type="checkbox" checked={form.reminderDays.includes(day)} onChange={() => toggleReminder(day)} />
-                  <span>{day} {day === 1 ? 'dia antes' : 'dias antes'}</span>
-                </label>)}
-              </div>
-              <p className="reminder-subtitle">No mesmo dia</p><div className="reminder-checks">{REMINDER_MINUTES.map((minutes) => <label key={minutes}><input type="checkbox" checked={form.reminderMinutesBefore.includes(minutes)} onChange={() => toggleReminderHour(minutes)} /><span>{minutes / 60} {minutes === 60 ? 'hora antes' : 'horas antes'}</span></label>)}</div>
-            </fieldset>
-            <div className="form-actions-inline">
-              <Button type="submit" icon="check">{editingId ? 'Salvar alterações' : 'Guardar compromisso'}</Button>
-              {editingId && <Button type="button" variant="ghost" onClick={() => { setEditingId(null); setForm(emptyForm()); }}>Cancelar edição</Button>}
-            </div>
-          </form>
-        </div>
-
-        <div className="card list-card">
-          <div className="card-heading"><div><span className="section-kicker">Sua agenda</span><h2>Compromissos</h2></div><span className="soft-count">{appointments.length}</span></div>
-          {sorted.length ? <div className="appointment-list">{sorted.map((item) => (
-            <div className="appointment-item" key={item.id}>
-              <div className="date-tile large"><strong>{new Date(`${item.date}T12:00:00`).getDate()}</strong><span>{new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(new Date(`${item.date}T12:00:00`)).replace('.', '')}</span></div>
-              <div className="appointment-content">
-                <div className="appointment-top"><button className="appointment-title-button" type="button" onClick={() => setSelectedAppointment(item)}>{item.description}</button><div className="appointment-actions"><button className="mini-delete" type="button" title="Visualizar compromisso" onClick={() => setSelectedAppointment(item)}><Icon name="info" size={15} /></button>
-                  <button className="mini-delete" type="button" title="Editar compromisso" aria-label={`Editar ${item.description}`} onClick={() => editAppointment(item)}><Icon name="edit" size={15} /></button>
-                  <button className="mini-delete" type="button" title="Excluir compromisso" aria-label={`Excluir ${item.description}`} onClick={() => setDeleteTarget({ type: 'appointment', id: item.id })}><Icon name="trash" size={15} /></button>
-                </div></div>
-                <span><Icon name="clock" size={13} /> {longDate(item.date)} às {item.time}</span>
-                <span><Icon name="bell" size={13} /> {[...getAppointmentReminderDays(item).map((day) => `${day} dia${day > 1 ? 's' : ''} antes`), ...getAppointmentReminderMinutes(item).map((minutes) => `${minutes / 60}h antes`)].join(', ') || 'Sem lembretes'}</span>
-                {item.address && <div className="appointment-address"><span><Icon name="target" size={13} /> {item.address}</span><button type="button" className="copy-address-button" onClick={() => void copyAddress(item.address)}><Icon name="copy" size={14} /> Copiar endereço</button></div>}
-              </div>
-            </div>
-          ))}</div> : <EmptyState title="Sua agenda está tranquila" text="Adicione o próximo compromisso para não deixar nada escapar." action="Preencher agora" onAction={() => document.querySelector<HTMLInputElement>('input[placeholder^="Ex."]')?.focus()} />}
-        </div>
+      <PageTitle eyebrow="Organize seus dias" title="Agenda" description="Acompanhe seus compromissos e mantenha tudo no horário." action="Novo compromisso" onAction={openNewAppointment} />
+      <section className="agenda-summary" aria-label="Resumo da agenda">
+        <article className="agenda-metric"><span className="agenda-metric-icon blue-bg"><Icon name="calendar" /></span><div><small>Total de compromissos</small><strong>{appointments.length}</strong><span>registrados na agenda</span></div></article>
+        <article className="agenda-metric"><span className="agenda-metric-icon lilac-bg"><Icon name="clock" /></span><div><small>Hoje</small><strong>{todayCount}</strong><span>{todayCount === 1 ? 'compromisso marcado' : 'compromissos marcados'}</span></div></article>
+        <article className="agenda-metric"><span className="agenda-metric-icon yellow-bg"><Icon name="calendar" /></span><div><small>Próximos 7 dias</small><strong>{weekCount}</strong><span>na próxima semana</span></div></article>
+        <article className="agenda-metric"><span className="agenda-metric-icon coral-bg"><Icon name="bell" /></span><div><small>Com lembretes</small><strong>{reminderCount}</strong><span>com alertas configurados</span></div></article>
       </section>
+      <section className="card list-card agenda-main-list">
+        <div className="card-heading"><div><span className="section-kicker">Sua programação</span><h2>Compromissos</h2><p className="agenda-list-hint">Os próximos compromissos aparecem primeiro.</p></div><span className="soft-count">{appointments.length} {appointments.length === 1 ? 'item' : 'itens'}</span></div>
+        {appointments.length ? <>
+          {upcoming.length > 0 && <div className="agenda-group"><div className="agenda-group-heading"><h3>Próximos compromissos</h3><span>{upcoming.length}</span></div><div className="appointment-list">{upcoming.map(renderAppointment)}</div></div>}
+          {past.length > 0 && <div className="agenda-group agenda-past-group"><div className="agenda-group-heading"><h3>Já realizados</h3><span>{past.length}</span></div><div className="appointment-list">{past.map(renderAppointment)}</div></div>}
+        </> : <EmptyState title="Sua agenda está tranquila" text="Adicione o próximo compromisso para não deixar nada escapar." action="Cadastrar compromisso" onAction={openNewAppointment} />}
+      </section>
+
+      <Modal open={formOpen} onOpenChange={closeForm} title={editingId ? 'Editar compromisso' : 'Novo compromisso'} description={editingId ? 'Atualize as informações e os lembretes.' : 'Preencha os detalhes para organizar seu próximo compromisso.'} size="wide">
+        <form onSubmit={saveAppointment} className="stack-form agenda-modal-form">
+          <div className="two-fields">
+            <Field label="Data"><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required /></Field>
+            <Field label="Horário"><input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} required /></Field>
+          </div>
+          <Field label="Descrição"><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ex.: Entrega para a Ana" required /></Field>
+          <Field label="Endereço (opcional)"><input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Rua, número ou ponto de encontro" /></Field>
+          <fieldset className="reminder-options"><legend>Lembretes antes do compromisso</legend><p>Escolha quando o PJ OWL deve avisar você.</p>
+            <div className="reminder-checks">{REMINDER_DAYS.map((day) => <label key={day}><input type="checkbox" checked={form.reminderDays.includes(day)} onChange={() => toggleReminder(day)} /><span>{day} {day === 1 ? 'dia antes' : 'dias antes'}</span></label>)}</div>
+            <p className="reminder-subtitle">No mesmo dia</p><div className="reminder-checks">{REMINDER_MINUTES.map((minutes) => <label key={minutes}><input type="checkbox" checked={form.reminderMinutesBefore.includes(minutes)} onChange={() => toggleReminderHour(minutes)} /><span>{minutes / 60} {minutes === 60 ? 'hora antes' : 'horas antes'}</span></label>)}</div>
+          </fieldset>
+          <div className="form-actions-inline"><Button type="submit" icon="check">{editingId ? 'Salvar alterações' : 'Guardar compromisso'}</Button><Button type="button" variant="ghost" onClick={() => closeForm(false)}>Cancelar</Button></div>
+        </form>
+      </Modal>
+
       <Modal open={!!selectedAppointment} onOpenChange={(open) => { if (!open) setSelectedAppointment(null); }} title="Detalhes do compromisso" description={selectedAppointment?.description}><div className="appointment-detail-modal">{selectedAppointment && <><p><b>Descrição:</b> {selectedAppointment.description}</p><p><b>Data:</b> {longDate(selectedAppointment.date)} às {selectedAppointment.time}</p><p><b>Endereço:</b> {selectedAppointment.address || 'Não informado'}</p><p><b>Lembretes:</b> {[...getAppointmentReminderDays(selectedAppointment).map((day) => `${day} dia(s) antes`), ...getAppointmentReminderMinutes(selectedAppointment).map((minutes) => `${minutes / 60} hora(s) antes`)].join(', ') || 'Nenhum'}</p></>}</div></Modal>
     </div>
   );
