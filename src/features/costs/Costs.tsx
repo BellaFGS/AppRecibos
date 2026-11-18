@@ -21,8 +21,8 @@ import {
 import { PageTitle } from '../../shared/layout/AppLayout';
 import {
   fetchUsdBrlRate,
-  getCachedExchangeRate,
   formatExchangeRateDate,
+  useUsdBrlRate,
 } from '../receipts/exchangeRate';
 
 type Props = {
@@ -150,8 +150,7 @@ export function Costs({
   const [unit, setUnit] = useState<Unit>('un');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState<Currency>('BRL');
-  const [rate, setRate] = useState(getCachedExchangeRate());
-  const [rateStale, setRateStale] = useState(false);
+  const { rate, stale: rateStale } = useUsdBrlRate(currency === 'USD');
   const [percentage, setPercentage] = useState('30');
   const [manualPrice, setManualPrice] = useState('');
   const [editingCalculation, setEditingCalculation] = useState<string | null>(null);
@@ -187,8 +186,6 @@ export function Costs({
     if (currency === 'USD') {
       try {
         const result = await fetchUsdBrlRate();
-        setRate(result.rate);
-        setRateStale(result.stale);
         exchangeRate = result.rate.rate;
         exchangeRateDate = result.rate.quotedAt;
       } catch {
@@ -201,7 +198,6 @@ export function Costs({
         }
         exchangeRate = rate.rate;
         exchangeRateDate = rate.quotedAt;
-        setRateStale(true);
       }
     }
 
