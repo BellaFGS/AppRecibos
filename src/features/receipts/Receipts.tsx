@@ -7,36 +7,17 @@ import { formatMoneyInput } from '../../shared/validation/numeric';
 import { formatDocument, sanitizeDocumentInput, getDocumentError } from '../../shared/validation/document';
 import { Modal } from '../../shared/components/Modal';
 import { PageTitle } from '../../shared/layout/AppLayout';
-import { convertUsdCentsToBrlCents, fetchUsdBrlRate, formatExchangeRateDate, getCachedExchangeRate, type ExchangeRate } from './exchangeRate';
+import { convertUsdCentsToBrlCents, formatExchangeRateDate, useUsdBrlRate, ExchangeRate } from './exchangeRate';
 
 export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { profile: BusinessProfile; setReceipts: React.Dispatch<React.SetStateAction<Receipt[]>>; navigate: (section: Section) => void; notify: (message: string) => void }) {
   const [form, setForm] = useState(defaultReceiptForm);
   const [providerSignature, setProviderSignature] = useState(profile.signature);
   const [clientSignature, setClientSignature] = useState('');
-  const [exchangeRate, setExchangeRate] = useState<ExchangeRate | null>(getCachedExchangeRate());
-  const [rateLoading, setRateLoading] = useState(false);
-  const [rateStale, setRateStale] = useState(false);
-  const [rateError, setRateError] = useState('');
+  const { rate: exchangeRate, loading: rateLoading, stale: rateStale, error: rateError, refresh: refreshRate } = useUsdBrlRate(form.currency === 'USD');
   const [profileWarningOpen, setProfileWarningOpen] = useState(false);
   const [savedReceipt, setSavedReceipt] = useState<Receipt | null>(null);
 
   useEffect(() => { setProviderSignature(profile.signature); }, [profile.signature]);
-  useEffect(() => {
-    if (form.currency !== 'USD') return;
-    let active = true;
-    setRateLoading(true);
-    if (exchangeRate) setRateStale(true);
-    setRateError('');
-    fetchUsdBrlRate().then(({ rate, stale }) => {
-      if (!active) return;
-      setExchangeRate(rate);
-      setRateStale(stale);
-    }).catch((error: unknown) => {
-      if (!active) return;
-      setRateError(error instanceof Error ? error.message : 'Cotação do dólar indisponível.');
-    }).finally(() => { if (active) setRateLoading(false); });
-    return () => { active = false; };
-  }, [form.currency]);
 
   const update = <K extends keyof typeof defaultReceiptForm>(key: K, value: typeof defaultReceiptForm[K]) => setForm((current) => ({ ...current, [key]: value }));
   const enteredAmount = parseMoney(form.amount);
@@ -116,7 +97,7 @@ export function ReceiptCreator({ profile, setReceipts, navigate, notify }: { pro
               {rateLoading && <span>Consultando cotação do dólar...</span>}
               {!rateLoading && exchangeRate && convertedAmount !== null && <><strong>Conversão estimada: {money(convertedAmount, 'BRL')}</strong><span>US$ 1,00 = {money(Math.round(exchangeRate.rate * 100), 'BRL')} · cotação de {formatExchangeRateDate(exchangeRate.quotedAt)}</span>{rateStale && <span className="warning-text">Sem conexão com a API. Usando a última cotação salva.</span>}</>}
               {rateError && !exchangeRate && <span className="warning-text">{rateError}</span>}
-              <button type="button" onClick={() => { setForm((current) => ({ ...current })); setRateLoading(true); fetchUsdBrlRate().then(({ rate, stale }) => { setExchangeRate(rate); setRateStale(stale); setRateError(''); }).catch((error: unknown) => setRateError(error instanceof Error ? error.message : 'Falha ao atualizar cotação.')).finally(() => setRateLoading(false)); }}>Atualizar cotação</button>
+              <button type="button" onClick={() => { void refreshRate(true); }} disabled={rateLoading}>Atualizar cotação</button>
             </div>}
             <div className="two-fields">
               <Field label="Método de pagamento"><select value={form.paymentMethod} onChange={(e) => update('paymentMethod', e.target.value as PaymentMethod)}>{['Dinheiro', 'Pix', 'Cartão de crédito', 'Cartão de débito', 'Transferência bancária', 'Outro'].map((method) => <option key={method}>{method}</option>)}</select></Field>
