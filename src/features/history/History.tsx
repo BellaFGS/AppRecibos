@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import type { Receipt } from '../../domain/models';
 import { longDate, money } from '../../domain/utils';
@@ -236,12 +235,15 @@ export function ReceiptRow({
           contentType: 'image/jpeg',
           path: tempFile.uri,
           android: {
-            saveDirectory: 'downloads',
-            relativePath: 'Download/PJ OWL',
+            // JPG é imagem: o plugin grava na coleção MediaStore.Images, que só
+            // aceita DCIM/ ou Pictures/. 'Download/...' causa IllegalArgumentException
+            // no Android, repassada como ERR_PARAM_DATA_INVALID.
+            saveDirectory: 'pictures',
+            relativePath: 'Pictures/PJ OWL',
           },
         });
 
-        notify('Recibo JPG salvo na pasta Downloads/PJ OWL!');
+        notify('Recibo JPG salvo em Imagens/PJ OWL (aparece na Galeria).');
       } else {
         const response = await fetch(dataUrl);
         const blob = await response.blob();
